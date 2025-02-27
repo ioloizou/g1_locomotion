@@ -18,7 +18,8 @@ class G1MujocoSimulation:
         # Find the model path
         rospack = rospkg.RosPack()
         pkg_path = rospack.get_path('g1_mujoco_sim')
-        model_path = os.path.join(pkg_path, 'models', 'g1_humanoid.xml')
+        # Get the path to the g1_description package
+        model_path = os.path.join(pkg_path, '..', 'g1_description', 'g1_23dof.xml')
         
         # Load the model
         self.model = mujoco.MjModel.from_xml_path(model_path)
@@ -65,6 +66,28 @@ class G1MujocoSimulation:
             
     def publish_joint_states(self):
         """Publish joint states to ROS."""
+
+    def publish_base_transform(self):
+        """Publish the base transform to TF."""
+        # Find the body ID for the base
+        base_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "base_link")
+        if base_id >= 0:
+            transform = TransformStamped()
+            transform.header.stamp = rospy.Time.now()
+            transform.header.frame_id = "world"
+            transform.child_frame_id = "base_link"
+            # Get position from simulation data
+            pos = self.data.xpos[base_id]
+            transform.transform.translation.x = pos[0]
+            transform.transform.translation.y = pos[1]
+            transform.transform.translation.z = pos[2]
+            # Get orientation from simulation data (w, x, y, z)
+            quat = self.data.xquat[base_id]
+            transform.transform.rotation.w = quat[0]
+            transform.transform.rotation.x = quat[1]
+            transform.transform.rotation.y = quat[2]
+            transform.transform.rotation.z = quat[3]
+            self.tf_broadcaster.sendTransform(transform)
 
 if __name__ == "__main__":
     sim = G1MujocoSimulation()

@@ -8,7 +8,6 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   tf
   tf2_ros
-  g1_mujoco_sim
 )
 
 catkin_package()
