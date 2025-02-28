@@ -2,160 +2,216 @@
 
 import os
 import time
-import numpy as np
 import mujoco
 import mujoco_viewer
 import rospkg
 import rospy
-from sensor_msgs.msg import JointState
-from geometry_msgs.msg import TransformStamped, WrenchStamped
-import tf2_ros
-import threading
+import pinocchio
+import numpy as np
+
+def inverse_dynamics(q_current, dq_current):
+    # Load the model
+    rospack = rospkg.RosPack()
+    pkg_path = rospack.get_path("g1_mujoco_sim")
+    model_path = os.path.join(pkg_path, "..", "g1_description", "g1_23dof.xml")
+    model = mujoco.MjModel.from_xml_path(model_path)
+
+    # Create data object
+    data = mujoco.MjData(model)
+
+    # Set the current state
+    data.qpos[7:] = q_current
+    data.qvel[6:] = dq_current
+
+    # Compute inverse dynamics
+    mujoco.mj_inverse(model, data)
+
+    # Extract joint torques
+    tau_ff = data.qfrc_inverse[6:]
+
+    return tau_ff
+
+def PID_controller(data, q_desired):
+    " A simple PID controller"
+
+    # Ingoring floating base
+    q_current = data.qpos[7:]
+    q_desired = q_init[7:]
+    dq_current = data.qvel[6:]
+    dq_desired = np.zeros(dq_current.shape)
+
+    # PID gains
+
+    scale = 0.7 
+
+    Kp = np.zeros(23)
+    Kd = np.zeros(23)
+    Kp[0:6] = [530.0, 570.0, 550.0, 270.0, 13.0, 30.0]
+    Kd[0:6] = [60.0, 100.0, 2.0, 20.0, 1.5, 0.08]
+
+    Kp[6:12] = Kp[0:6]
+    Kd[6:12] = Kd[0:6]
+
+    Kp[12] = 150.0
+    Kd[12] = 10.0
+
+    Kp[13:17] = Kp[18:22] = 110.0
+    Kp[17] = Kp[22] = 11.0
+
+    Kd[13:17] = Kd[18:22] = 5.0
+    Kd[17] = Kd[22] = 0.1
+
+    # Compute feedforward torque
+    tau_ff = inverse_dynamics(q_current, dq_current)
+    tau = tau_ff + scale*Kp * (q_desired - q_current) + scale*Kd * (dq_desired - dq_current)
+    data.ctrl = tau
+
+
+q_init = [
+	# floating base
+	0.0,
+	0.0,
+	0.793 - 0.109,  # reference base linear # Note i should do FW kinematics and subsrabct the difference of z from the default
+	1.0, # reference base quaternion
+	0.0,
+	0.0,
+	0.0,  
+	## left leg
+	-0.6,  # left_hip_pitch_joint
+	0.0,  # left_hip_roll_joint
+	0.0,  # left_hip_yaw_joint
+	1.2,  # left_knee_joint
+	-0.6,  # left_ankle_pitch_joint
+	0.0,  # left_ankle_roll_joint
+	## right leg
+	-0.6,  # right_hip_pitch_joint
+	0.0,  # right_hip_roll_joint
+	0.0,  # right_hip_yaw_joint
+	1.2,  # right_knee_joint
+	-0.6,  # right_ankle_pitch_joint
+	0.0,  # right_ankle_roll_joint
+	## waist
+	0.0,  # waist_yaw_joint
+	## left shoulder
+	0.0,  # left_shoulder_pitch_joint
+	0.0,  # left_shoulder_roll_joint
+	0.0,  # left_shoulder_yaw_joint
+	0.0,  # left_elbow_joint
+	0.0,  # left_wrist_roll_joint
+	## right shoulder
+	0.0,  #'right_shoulder_pitch_joint'
+	0.0,  # right_shoulder_roll_joint
+	0.0,  # right_shoulder_yaw_joint
+	0.0,  # right_elbow_joint
+	0.0,  # right_wrist_roll_joint
+]
+
 
 class G1MujocoSimulation:
     def __init__(self):
-        rospy.init_node('g1_mujoco_sim', anonymous=True)
-        
+        rospy.init_node("g1_mujoco_sim", anonymous=True)
+
         # Find the model path
         rospack = rospkg.RosPack()
-        pkg_path = rospack.get_path('g1_mujoco_sim')
-        model_path = os.path.join(pkg_path, '..', 'g1_description', 'g1_23dof.xml')
-        
+        pkg_path = rospack.get_path("g1_mujoco_sim")
+        model_path = os.path.join(pkg_path, "..", "g1_description", "g1_23dof.xml")
+
         # Load the model
         self.model = mujoco.MjModel.from_xml_path(model_path)
-        
-        # Initialize data
         self.data = mujoco.MjData(self.model)
-        
+
+        self.data.qpos = q_init
+
+        # Real-time settings
+        self.sim_timestep = self.model.opt.timestep
+        self.real_time_factor = 0.01 # 1.0 = real time
+
         # Create viewer
-        self.viewer = mujoco_viewer.MujocoViewer(
-            self.model, 
-            self.data,
-        )
-        
-        # Publishers
-        self.joint_pub = rospy.Publisher('joint_states', JointState, queue_size=1)  
-        self.tf_broadcaster = tf2_ros.TransformBroadcaster()
-        
-        # Initialize messages
-        self.joint_state_msg = JointState()
-        self.joint_state_msg.name = [mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_JOINT, i) 
-                                    for i in range(self.model.njnt) if self.model.jnt_type[i] != 0]
-        
-        # Significant performance settings
-        self.sim_rate = 400  # Hz for simulation
-        self.render_every_n_steps = 4  # Render 1/4 of frames
-        self.publish_every_n_steps = 2  # Publish 1/2 of frames
-        self.step_counter = 0
-        
-        # Use separate thread for physics
+        self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
+
+        # Running flag
         self.running = True
-        self.physics_thread = True
-        
-        # Rate limiter
-        self.rate = rospy.Rate(self.sim_rate)
-        
+
+        joint_names = [
+            "left_hip_pitch_joint",
+            "left_hip_roll_joint",
+            "left_hip_yaw_joint",
+            "left_knee_joint",
+            "left_ankle_pitch_joint",
+            "left_ankle_roll_joint",
+            "right_hip_pitch_joint",
+            "right_hip_roll_joint",
+            "right_hip_yaw_joint",
+            "right_knee_joint",
+            "right_ankle_pitch_joint",
+            "right_ankle_roll_joint",
+            "waist_yaw_joint",
+            "left_shoulder_pitch_joint",
+            "left_shoulder_roll_joint",
+            "left_shoulder_yaw_joint",
+            "left_elbow_joint",
+            "left_wrist_roll_joint",
+            "right_shoulder_pitch_joint",
+            "right_shoulder_roll_joint",
+            "right_shoulder_yaw_joint",
+            "right_elbow_joint",
+            "right_wrist_roll_joint",
+        ]
+
+        contact_frame_names = [
+            "left_foot_upper_right",
+            "left_foot_lower_right",
+            "left_foot_upper_left",
+            "left_foot_lower_left",
+            "right_foot_upper_right",
+            "right_foot_lower_right",
+            "right_foot_upper_left",
+            "right_foot_lower_left",
+        ]
+
     def run(self):
-        """Run the simulation with multi-threading."""
+        """Run simple real-time simulation."""
+        prev_time = time.time()
+        sim_time = 0.0
+
         try:
-            # Start physics in separate thread for better performance
-            self.physics_thread = threading.Thread(target=self.physics_loop)
-            self.physics_thread.daemon = True
-            self.physics_thread.start()
-            
-            # Main thread handles rendering
-            self.render_loop()
-                
+            while self.running and not rospy.is_shutdown() and self.viewer.is_alive:
+                # Get real time elapsed since last step
+                current_time = time.time()
+                elapsed_wall_time = current_time - prev_time
+                prev_time = current_time
+
+                # Compute simulation time to advance (applying real-time factor)
+                sim_time_to_advance = elapsed_wall_time * self.real_time_factor
+
+                # Calculate steps needed
+                steps = max(1, int(sim_time_to_advance / self.sim_timestep))
+
+                # Step the simulation
+                for _ in range(steps):
+                    PID_controller(self.data, q_init)
+                    mujoco.mj_step(self.model, self.data)
+                    sim_time += self.sim_timestep
+
+                # Render the current state
+                self.viewer.render()
+
+                # Print time factor every 5 seconds
+                if int(sim_time) % 5 == 0 and int(sim_time) != int(
+                    sim_time - self.sim_timestep
+                ):
+                    rospy.loginfo(
+                        f"Sim time: {sim_time:.2f}s, Real-time factor: {self.real_time_factor}"
+                    )
+
         except Exception as e:
             rospy.logerr(f"Simulation error: {e}")
         finally:
-            self.running = False
-            if self.physics_thread:
-                self.physics_thread.join(timeout=1.0)
-            self.viewer.close()
-    
-    def physics_loop(self):
-        """Run physics simulation in separate thread."""
-        last_time = time.time()
-        fps_counter = 0
-        
-        while self.running and not rospy.is_shutdown():
-            # Step physics
-            mujoco.mj_step(self.model, self.data)
-            self.step_counter += 1
-            
-            # Publish only every N steps
-            if self.step_counter % self.publish_every_n_steps == 0:
-                self.publish_joint_states()
-                self.publish_base_transform()
-            
-            # FPS calculation
-            fps_counter += 1
-            if time.time() - last_time > 5:
-                fps = fps_counter / (time.time() - last_time)
-                rospy.loginfo(f"Physics simulation rate: {fps:.1f} Hz")
-                fps_counter = 0
-                last_time = time.time()
-                
-            # Control rate
-            self.rate.sleep()
-    
-    def render_loop(self):
-        """Handle rendering separately."""
-        render_rate = rospy.Rate(self.sim_rate / self.render_every_n_steps)
-        
-        while self.running and not rospy.is_shutdown() and self.viewer.is_alive:
-            # Update the viewer less frequently than physics
-            self.viewer.render()
-            render_rate.sleep()
-            
-    def publish_joint_states(self):
-        """Publish joint states to ROS."""
-        self.joint_state_msg.header.stamp = rospy.Time.now()
-        
-        # Get joint positions and velocities (optimized)
-        joint_positions = []
-        joint_velocities = []
-        
-        for i in range(self.model.njnt):
-            if self.model.jnt_type[i] != 0:  # Exclude free joints
-                joint_positions.append(self.data.qpos[i])
-                joint_velocities.append(self.data.qvel[i])
-        
-        self.joint_state_msg.position = joint_positions
-        self.joint_state_msg.velocity = joint_velocities
-        
-        # Publish
-        self.joint_pub.publish(self.joint_state_msg)
+            if self.viewer:
+                self.viewer.close()
 
-    def publish_base_transform(self):
-        """Publish the base transform to TF."""
-        # Find the body ID for the base
-        base_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "base_link")
-        if base_id >= 0:
-            transform = TransformStamped()
-            transform.header.stamp = rospy.Time.now()
-            transform.header.frame_id = "world"
-            transform.child_frame_id = "base_link"
-            
-            # Get position from simulation data
-            pos = self.data.xpos[base_id]
-            transform.transform.translation.x = pos[0]
-            transform.transform.translation.y = pos[1]
-            transform.transform.translation.z = pos[2]
-            
-            # Get orientation from simulation data
-            quat = self.data.xquat[base_id]
-            transform.transform.rotation.w = quat[0]
-            transform.transform.rotation.x = quat[1]
-            transform.transform.rotation.y = quat[2]
-            transform.transform.rotation.z = quat[3]
-            
-            self.tf_broadcaster.sendTransform(transform)
 
 if __name__ == "__main__":
-    # Set threading model
-    os.environ["OMP_NUM_THREADS"] = "4"  # Optimize OpenMP threading
-    
+    # Run simulation
     sim = G1MujocoSimulation()
     sim.run()
