@@ -9,28 +9,6 @@ import rospy
 import pinocchio
 import numpy as np
 
-def inverse_dynamics(q_current, dq_current):
-    # Load the model
-    rospack = rospkg.RosPack()
-    pkg_path = rospack.get_path("g1_mujoco_sim")
-    model_path = os.path.join(pkg_path, "..", "g1_description", "g1_23dof.xml")
-    model = mujoco.MjModel.from_xml_path(model_path)
-
-    # Create data object
-    data = mujoco.MjData(model)
-
-    # Set the current state
-    data.qpos[7:] = q_current
-    data.qvel[6:] = dq_current
-
-    # Compute inverse dynamics
-    mujoco.mj_inverse(model, data)
-
-    # Extract joint torques
-    tau_ff = data.qfrc_inverse[6:]
-
-    return tau_ff
-
 def PID_controller(data, q_desired):
     " A simple PID controller"
 
@@ -42,12 +20,12 @@ def PID_controller(data, q_desired):
 
     # PID gains
 
-    scale = 0.7 
+    scale = 1.5 
 
     Kp = np.zeros(23)
     Kd = np.zeros(23)
-    Kp[0:6] = [530.0, 570.0, 550.0, 270.0, 13.0, 30.0]
-    Kd[0:6] = [60.0, 100.0, 2.0, 20.0, 1.5, 0.08]
+    Kp[0:6] = [530.0, 570.0, 550.0, 270.0, 130.0, 30.0]
+    Kd[0:6] = [60.0, 100.0, 2.0, 20.0, 100.5, 5.]
 
     Kp[6:12] = Kp[0:6]
     Kd[6:12] = Kd[0:6]
@@ -55,15 +33,16 @@ def PID_controller(data, q_desired):
     Kp[12] = 150.0
     Kd[12] = 10.0
 
-    Kp[13:17] = Kp[18:22] = 110.0
+    Kp[13:17] = Kp[18:22] = 20.0
     Kp[17] = Kp[22] = 11.0
 
     Kd[13:17] = Kd[18:22] = 5.0
     Kd[17] = Kd[22] = 0.1
 
     # Compute feedforward torque
-    tau_ff = inverse_dynamics(q_current, dq_current)
-    tau = tau_ff + scale*Kp * (q_desired - q_current) + scale*Kd * (dq_desired - dq_current)
+    tau_ff = 0
+
+    tau = tau_ff + 1.5*scale*Kp * (q_desired - q_current) + scale/3*Kd * (dq_desired - dq_current)
     data.ctrl = tau
 
 
@@ -71,7 +50,7 @@ q_init = [
 	# floating base
 	0.0,
 	0.0,
-	0.793 - 0.109,  # reference base linear # Note i should do FW kinematics and subsrabct the difference of z from the default
+	0.793 - 0.117,  # reference base linear # Note i should do FW kinematics and subscrabt the difference of z from the default
 	1.0, # reference base quaternion
 	0.0,
 	0.0,
@@ -121,10 +100,13 @@ class G1MujocoSimulation:
         self.data = mujoco.MjData(self.model)
 
         self.data.qpos = q_init
+        # q_corrected = self.data.qpos.copy()
+        # q_corrected[2] = self.data.qpos[2]
+        # self.data.qpos = q_corrected
 
         # Real-time settings
         self.sim_timestep = self.model.opt.timestep
-        self.real_time_factor = 0.01 # 1.0 = real time
+        self.real_time_factor = 1. # 1.0 = real time
 
         # Create viewer
         self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
@@ -195,14 +177,6 @@ class G1MujocoSimulation:
 
                 # Render the current state
                 self.viewer.render()
-
-                # Print time factor every 5 seconds
-                if int(sim_time) % 5 == 0 and int(sim_time) != int(
-                    sim_time - self.sim_timestep
-                ):
-                    rospy.loginfo(
-                        f"Sim time: {sim_time:.2f}s, Real-time factor: {self.real_time_factor}"
-                    )
 
         except Exception as e:
             rospy.logerr(f"Simulation error: {e}")

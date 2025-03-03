@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   tf
   tf2_ros
+  pinocchio
 )
 
 catkin_package()
