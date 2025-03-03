@@ -6,84 +6,22 @@ import mujoco
 import mujoco_viewer
 import rospkg
 import rospy
-import pinocchio
 import numpy as np
 
-def PID_controller(data, q_desired):
-    " A simple PID controller"
-
-    # Ingoring floating base
-    q_current = data.qpos[7:]
-    q_desired = q_init[7:]
-    dq_current = data.qvel[6:]
-    dq_desired = np.zeros(dq_current.shape)
-
-    # PID gains
-
-    scale = 1.5 
-
-    Kp = np.zeros(23)
-    Kd = np.zeros(23)
-    Kp[0:6] = [530.0, 570.0, 550.0, 270.0, 130.0, 30.0]
-    Kd[0:6] = [60.0, 100.0, 2.0, 20.0, 100.5, 5.]
-
-    Kp[6:12] = Kp[0:6]
-    Kd[6:12] = Kd[0:6]
-
-    Kp[12] = 150.0
-    Kd[12] = 10.0
-
-    Kp[13:17] = Kp[18:22] = 20.0
-    Kp[17] = Kp[22] = 11.0
-
-    Kd[13:17] = Kd[18:22] = 5.0
-    Kd[17] = Kd[22] = 0.1
-
-    # Compute feedforward torque
-    tau_ff = 0
-
-    tau = tau_ff + 1.5*scale*Kp * (q_desired - q_current) + scale/3*Kd * (dq_desired - dq_current)
-    data.ctrl = tau
+from config import q_init
+from PD_controller import PD_controller
 
 
-q_init = [
-	# floating base
-	0.0,
-	0.0,
-	0.793 - 0.117,  # reference base linear # Note i should do FW kinematics and subscrabt the difference of z from the default
-	1.0, # reference base quaternion
-	0.0,
-	0.0,
-	0.0,  
-	## left leg
-	-0.6,  # left_hip_pitch_joint
-	0.0,  # left_hip_roll_joint
-	0.0,  # left_hip_yaw_joint
-	1.2,  # left_knee_joint
-	-0.6,  # left_ankle_pitch_joint
-	0.0,  # left_ankle_roll_joint
-	## right leg
-	-0.6,  # right_hip_pitch_joint
-	0.0,  # right_hip_roll_joint
-	0.0,  # right_hip_yaw_joint
-	1.2,  # right_knee_joint
-	-0.6,  # right_ankle_pitch_joint
-	0.0,  # right_ankle_roll_joint
-	## waist
-	0.0,  # waist_yaw_joint
-	## left shoulder
-	0.0,  # left_shoulder_pitch_joint
-	0.0,  # left_shoulder_roll_joint
-	0.0,  # left_shoulder_yaw_joint
-	0.0,  # left_elbow_joint
-	0.0,  # left_wrist_roll_joint
-	## right shoulder
-	0.0,  #'right_shoulder_pitch_joint'
-	0.0,  # right_shoulder_roll_joint
-	0.0,  # right_shoulder_yaw_joint
-	0.0,  # right_elbow_joint
-	0.0,  # right_wrist_roll_joint
-]
+from ttictoc import tic, toc
+import tf
+from sensor_msgs.msg import JointState
+from geometry_msgs.msg import TransformStamped, WrenchStamped
+
+from xbot2_interface import pyxbot2_interface as xbi
+from pyopensot.tasks.acceleration import CoM, Cartesian, Postural, DynamicFeasibility
+from pyopensot.constraints.acceleration import JointLimits, VelocityLimits
+from pyopensot.constraints.force import FrictionCone
+import pyopensot as pysot
 
 
 class G1MujocoSimulation:
@@ -94,19 +32,20 @@ class G1MujocoSimulation:
         rospack = rospkg.RosPack()
         pkg_path = rospack.get_path("g1_mujoco_sim")
         model_path = os.path.join(pkg_path, "..", "g1_description", "g1_23dof.xml")
+        
+        # Load the URDF
+        with open(os.path.join(pkg_path, "..", "g1_description", "g1_23dof.urdf"), 'r') as urdf_file:
+            self.urdf = urdf_file.read()
 
         # Load the model
         self.model = mujoco.MjModel.from_xml_path(model_path)
         self.data = mujoco.MjData(self.model)
 
         self.data.qpos = q_init
-        # q_corrected = self.data.qpos.copy()
-        # q_corrected[2] = self.data.qpos[2]
-        # self.data.qpos = q_corrected
 
         # Real-time settings
         self.sim_timestep = self.model.opt.timestep
-        self.real_time_factor = 1. # 1.0 = real time
+        self.real_time_factor = 1.0  # 1.0 = real time
 
         # Create viewer
         self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
@@ -114,47 +53,161 @@ class G1MujocoSimulation:
         # Running flag
         self.running = True
 
-        joint_names = [
-            "left_hip_pitch_joint",
-            "left_hip_roll_joint",
-            "left_hip_yaw_joint",
-            "left_knee_joint",
-            "left_ankle_pitch_joint",
-            "left_ankle_roll_joint",
-            "right_hip_pitch_joint",
-            "right_hip_roll_joint",
-            "right_hip_yaw_joint",
-            "right_knee_joint",
-            "right_ankle_pitch_joint",
-            "right_ankle_roll_joint",
-            "waist_yaw_joint",
-            "left_shoulder_pitch_joint",
-            "left_shoulder_roll_joint",
-            "left_shoulder_yaw_joint",
-            "left_elbow_joint",
-            "left_wrist_roll_joint",
-            "right_shoulder_pitch_joint",
-            "right_shoulder_roll_joint",
-            "right_shoulder_yaw_joint",
-            "right_elbow_joint",
-            "right_wrist_roll_joint",
+    def permute_muj_to_xbi(self, xbi_qpos):
+        """Convert mujoco qpos to xbi qpos."""
+        # Place the 4th element at the 7th position
+        xbi_qpos_perm = xbi_qpos.copy()
+        xbi_qpos_perm[6] = xbi_qpos[3]
+        xbi_qpos_perm[3] = xbi_qpos[6]
+        return xbi_qpos_perm
+
+    def setup_WBID(self):
+        # Get model from urdf
+        self.xbi_model = xbi.ModelInterface2(self.urdf)
+        qmin, qmax = self.xbi_model.getJointLimits()
+        dqmax = self.xbi_model.getVelocityLimits()
+        # Initial Joint Configuration
+        self.q = q_init.copy()
+        self.dq = np.zeros(self.xbi_model.nv)
+        self.xbi_model.setJointPosition(self.q)
+        self.xbi_model.setJointVelocity(self.dq)
+        self.xbi_model.update()
+        # Instantiate Variables: qddot and contact forces (3 per contact)
+        variables_vec = dict()
+        variables_vec["qddot"] = self.xbi_model.nv
+
+        line_foot_contact_frames = [
+            "left_foot_line_contact_lower",
+            "left_foot_line_contact_upper",
+            "right_foot_line_contact_lower",
+            "right_foot_line_contact_upper",
         ]
 
-        contact_frame_names = [
-            "left_foot_upper_right",
-            "left_foot_lower_right",
-            "left_foot_upper_left",
-            "left_foot_lower_left",
-            "right_foot_upper_right",
-            "right_foot_lower_right",
-            "right_foot_upper_left",
-            "right_foot_lower_left",
+        # Hands may be added in the future
+        contact_frames = line_foot_contact_frames
+
+        for contact_frame in contact_frames:
+            variables_vec[contact_frame] = 3
+            self.variables = pysot.OptvarHelper(variables_vec)
+
+        # Set CoM tracking task
+        self.com = CoM(self.xbi_model, self.variables.getVariable("qddot"))
+        # FK at initial config
+        self.com_ref, self.vel_ref, self.acc_ref = self.com.getReference()
+        self.com0 = self.com_ref.copy()
+
+        # Set the whole Cartesian task but later only orientation will be used
+        base = Cartesian(
+            "base", self.xbi_model, "world", "pelvis", self.variables.getVariable("qddot")
+        )
+
+        # Set the contact task
+        contact_tasks = list()
+        cartesian_contact_task_frames = [
+            "left_foot_point_contact",
+            "right_foot_point_contact",
         ]
+        for cartesian_contact_task_frame in cartesian_contact_task_frames:
+            contact_tasks.append(
+                Cartesian(
+                    cartesian_contact_task_frame,
+                    self.xbi_model,
+                    cartesian_contact_task_frame,
+                    "world",
+                    self.variables.getVariable("qddot"),
+                )
+            )
+
+        posture = Postural(self.xbi_model, self.variables.getVariable("qddot"))
+
+        # For the base task taking only the orientation part
+        self.stack = 0.1 * self.com + 0.1 * (base % [3, 4, 5])
+        self.force_variables = list()
+
+        for i in range(len(cartesian_contact_task_frames)):
+            self.stack = self.stack + 10.*(contact_tasks[i])
+
+        for i in range(len(contact_frames)):
+            self.force_variables.append(self.variables.getVariable(contact_frames[i]))
+
+        # Creates the stack.
+        self.stack = (pysot.AutoStack(self.stack) / posture) << DynamicFeasibility(
+            "floating_base_dynamics",
+            self.xbi_model,
+            self.variables.getVariable("qddot"),
+            self.force_variables,
+            contact_frames,
+        )
+        self.stack = self.stack << JointLimits(
+            self.xbi_model,
+            self.variables.getVariable("qddot"),
+            qmax,
+            qmin,
+            10.0 * dqmax,
+            self.sim_timestep,
+        )
+        self.stack = self.stack << VelocityLimits(
+            self.xbi_model, self.variables.getVariable("qddot"), dqmax, self.sim_timestep
+        )
+        for i in range(len(contact_frames)):
+            T = self.xbi_model.getPose(contact_frames[i])
+            mu = (T.linear, 0.8)  # rotation is world to contact
+            self.stack = self.stack << FrictionCone(
+                contact_frames[i],
+                self.variables.getVariable(contact_frames[i]),
+                self.xbi_model,
+                mu,
+            )
+
+        # Creates the solver
+        self.solver = pysot.iHQP(self.stack)
+
+        # Set amplitude for CoM task
+        self.alpha = 0.4
+
+    def sim_step(self):
+
+        """Perform a single simulation step."""
+        self.xbi_model.setJointPosition(self.permute_muj_to_xbi(self.data.qpos))
+        self.xbi_model.setJointVelocity(self.dq)
+        self.xbi_model.update()
+        
+
+        # Compute new reference for CoM task
+        self.com_ref[2] = self.com0[2] + self.alpha * np.sin(3.1415 * self.sim_time)
+        self.com_ref[1] = self.com0[1] + self.alpha * np.cos(3.1415 * self.sim_time)
+        self.sim_time += self.sim_timestep
+        self.com.setReference(self.com_ref)
+
+        # Update stack
+        self.stack.update()
+        
+        # Solve
+        x = self.solver.solve()
+        ddq = self.variables.getVariable("qddot").getValue(x)
+        
+        # Extract the force values
+        forces = []
+        for force_var in self.force_variables:
+            force = force_var.getValue(x)
+            forces.append(force)
+
+        # Update joint velocity
+        self.dq = self.dq + ddq * self.sim_timestep
+
+        self.q = self.xbi_model.sum(
+            self.q, self.dq * self.sim_timestep + 0.5 * ddq * self.sim_timestep**2
+        )
+
+        tau = xbi.computeInverseDynamics(self.xbi_model, self.q, self.dq, ddq, forces)
+        self.data.ctrl = tau
+
+        mujoco.mj_step(self.model, self.data)
 
     def run(self):
         """Run simple real-time simulation."""
         prev_time = time.time()
-        sim_time = 0.0
+        self.sim_time = 0.0
 
         try:
             while self.running and not rospy.is_shutdown() and self.viewer.is_alive:
@@ -171,9 +224,8 @@ class G1MujocoSimulation:
 
                 # Step the simulation
                 for _ in range(steps):
-                    PID_controller(self.data, q_init)
-                    mujoco.mj_step(self.model, self.data)
-                    sim_time += self.sim_timestep
+                    self.sim_step()
+                    self.sim_time += self.sim_timestep
 
                 # Render the current state
                 self.viewer.render()
@@ -188,4 +240,5 @@ class G1MujocoSimulation:
 if __name__ == "__main__":
     # Run simulation
     sim = G1MujocoSimulation()
+    sim.setup_WBID()
     sim.run()
