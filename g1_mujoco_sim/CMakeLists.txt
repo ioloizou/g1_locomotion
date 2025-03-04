@@ -19,8 +19,6 @@ include_directories(
 
 catkin_install_python(PROGRAMS
   scripts/run_simulation.py
-  scirpts/tes.py
-  scripts/utils.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
