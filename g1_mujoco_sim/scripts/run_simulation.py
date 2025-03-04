@@ -157,6 +157,7 @@ class G1MujocoSimulation:
 
         # Set the Angular momentum task
         angular_momentum = AngularMomentum(self.xbi_model, self.variables.getVariable("qddot"))
+        # angular_momentum.setLambda(100.)
         
         # Set the contact task
         contact_tasks = list()
@@ -178,23 +179,23 @@ class G1MujocoSimulation:
             
 
         posture = Postural(self.xbi_model, self.variables.getVariable("qddot"))
-        posture.setLambda(100., 40.)
+        posture.setLambda(300., 20.)
         
         # Regularization task
         reg_qddot = MinimizeVariable("req_qddot", self.variables.getVariable("qddot"))
         
 
         # For the base task taking only the orientation part
-        self.stack = 0.1*self.com + 0.1*(base % [3, 4, 5]) + 0.1*angular_momentum + 0.001*posture + 0.001 * reg_qddot
+        self.stack = 0.1*self.com + 0.1*(base % [3, 4, 5]) + 0.1*angular_momentum + 0.1*posture
       
         self.wrench_tasks = list()
         for contact_frame in self.contact_frames:
             self.wrench_tasks.append(Wrench(contact_frame, contact_frame, "pelvis", self.variables.getVariable(contact_frame)))
             setDesiredForce(self.wrench_tasks[-1], [0, 0, 0.], self.variables.getVariable(contact_frame))
-            self.stack = self.stack + 0.000000001*(self.wrench_tasks[-1])
+            # self.stack = self.stack + 0.000000001*(self.wrench_tasks[-1])
 
         for i in range(len(cartesian_contact_task_frames)):
-            self.stack = self.stack + 10.*(contact_tasks[i])
+            self.stack = self.stack + 15.*(contact_tasks[i])
 
         self.force_variables = list()
         for i in range(len(self.contact_frames)):
