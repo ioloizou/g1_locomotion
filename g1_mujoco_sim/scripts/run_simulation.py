@@ -18,11 +18,55 @@ from sensor_msgs.msg import JointState
 from geometry_msgs.msg import TransformStamped, WrenchStamped
 
 from xbot2_interface import pyxbot2_interface as xbi
-from pyopensot.tasks.acceleration import CoM, Cartesian, Postural, DynamicFeasibility
+from pyopensot.tasks.acceleration import CoM, Cartesian, Postural, DynamicFeasibility, AngularMomentum
 from pyopensot.constraints.acceleration import JointLimits, VelocityLimits
 from pyopensot.constraints.force import FrictionCone
 import pyopensot as pysot
 
+def MinimizeVariable(name, opt_var): 
+	'''Task to regularize a variable using a generic task'''
+	A = opt_var.getM()
+
+	# The minus because y = Mx + q is mapped on ||Ax - b|| 
+	b = -opt_var.getq()
+	task = pysot.GenericTask(name, A, b, opt_var)
+
+
+	# Setting the regularization weight.
+	task.setWeight(1.)
+	task.update()
+
+	# print(f"MinVar A:\n {task.getA()}")
+	# print(f"MinVar b:\n {task.getb()}")
+	# print(f"MinVar W:\n {task.getWeight()}")
+
+	return task
+
+def Wrench(name, distal_link, base_link, wrench):
+	'''Task to minimize f-fd using a generic task'''
+
+	# print(wrench)
+	# print(wrench.getM().shape)
+	# print(wrench.getq())
+
+	A = np.eye(3)
+	b =	- wrench.getq()
+	
+	return pysot.GenericTask(name, A, b, wrench) 
+
+def setDesiredForce(Wrench_task, wrench_desired, wrench):
+	# b = -(wrench - wrench_desired).getq()
+
+	b = wrench_desired - wrench.getq()
+	
+	print(f"b: {b}")
+	
+	# print(f'wrench_desired_dimensions: {wrench_desired.shape}')
+	# print(f'wrench: {wrench}')
+	# print(wrench.getM().shape)
+	# print(f'wrench_dimensions: {wrench.getq().shape}')
+	# print(f'b_dimensions: {b.shape}')
+	Wrench_task.setb(b)
 
 class G1MujocoSimulation:
     def __init__(self):
@@ -48,7 +92,7 @@ class G1MujocoSimulation:
         # Real-time settings
         self.sim_timestep = self.model.opt.timestep
         # print("self.sim_timestep ===========================\n", self.sim_timestep)
-        self.real_time_factor = 0.01  # 1.0 = real time
+        self.real_time_factor = 1.  # 1.0 = real time
 
         # Create viewer
         self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
@@ -100,6 +144,7 @@ class G1MujocoSimulation:
 
         # Set CoM tracking task
         self.com = CoM(self.xbi_model, self.variables.getVariable("qddot"))
+        self.com.setLambda(1000., 600.)
         # FK at initial config
         self.com_ref, self.vel_ref, self.acc_ref = self.com.getReference()
         self.com0 = self.com_ref.copy()
@@ -108,7 +153,11 @@ class G1MujocoSimulation:
         base = Cartesian(
             "base", self.xbi_model, "world", "pelvis", self.variables.getVariable("qddot")
         )
+        base.setLambda(100., 70.)
 
+        # Set the Angular momentum task
+        angular_momentum = AngularMomentum(self.xbi_model, self.variables.getVariable("qddot"))
+        
         # Set the contact task
         contact_tasks = list()
         cartesian_contact_task_frames = [
@@ -125,11 +174,24 @@ class G1MujocoSimulation:
                     self.variables.getVariable("qddot"),
                 )
             )
+            # contact_tasks[-1].setLambda(100., 40.)
+            
 
         posture = Postural(self.xbi_model, self.variables.getVariable("qddot"))
+        posture.setLambda(100., 40.)
+        
+        # Regularization task
+        reg_qddot = MinimizeVariable("req_qddot", self.variables.getVariable("qddot"))
+        
 
         # For the base task taking only the orientation part
-        self.stack = 0.05 * self.com + 0.1 * (base % [3, 4, 5]) + 0.005 * posture
+        self.stack = 0.1*self.com + 0.1*(base % [3, 4, 5]) + 0.1*angular_momentum + 0.001*posture + 0.001 * reg_qddot
+      
+        self.wrench_tasks = list()
+        for contact_frame in self.contact_frames:
+            self.wrench_tasks.append(Wrench(contact_frame, contact_frame, "pelvis", self.variables.getVariable(contact_frame)))
+            setDesiredForce(self.wrench_tasks[-1], [0, 0, 0.], self.variables.getVariable(contact_frame))
+            self.stack = self.stack + 0.000000001*(self.wrench_tasks[-1])
 
         for i in range(len(cartesian_contact_task_frames)):
             self.stack = self.stack + 10.*(contact_tasks[i])
@@ -204,6 +266,9 @@ class G1MujocoSimulation:
         print("self.com_ref =========================== \n", self.com0)
         self.com.setReference(self.com_ref)
 
+        for i in range(len(self.contact_frames)):
+            setDesiredForce(self.wrench_tasks[i], [0, 0, 0], self.variables.getVariable(self.contact_frames[i]))
+
         # Update stack
         self.stack.update()
         
@@ -226,6 +291,7 @@ class G1MujocoSimulation:
         for i in range(len(self.contact_frames)):
             force_var = self.variables.getVariable(self.contact_frames[i])
             forces.append(force_var.getValue(x))
+        
         print("forces ===========================")
         print(np.array(forces))
         
@@ -234,30 +300,21 @@ class G1MujocoSimulation:
         self.xbi_model.update()
 
         tau = self.xbi_model.computeInverseDynamics()
-        # tau = np.zeros(self.xbi_model.nv)
-        print("tau ===========================")
         
         # Reaction Forces to torques
-        # tau = np.zeros(self.xbi_model.nv)
         for i in range(len(self.contact_frames)):
             Jc = self.xbi_model.getJacobian(self.contact_frames[i])
             tau = tau - Jc[:3, :].T  @ np.array(forces[i])
         
-        # print(tau)
+        print("tau ===========================")
+        print(tau)
+        
         print("hi")
         # Exclude floating base
-        # tau[0:6] = 0.0
         self.data.ctrl = tau[6:]
                 
-        # print("data.ctrl ===========================")
-        # print(self.data.ctrl)
-        # self.xbi_model.setJointEffort(tau)
-        
-        # print("xbi joint effort ===========================")
-        # print(self.xbi_model.getJointEffort())
-        
         self.pass_count += 1
-        # if self.pass_count >= 100:
+        # if self.pass_count >= 1:
             # exit()
 
         mujoco.mj_step(self.model, self.data)

@@ -2,7 +2,7 @@ q_init = [
 	# floating base
 	0.0,
 	0.0,
-	0.793 - 0.117,  # reference base linear # Note i should do FW kinematics and subscrabt the difference of z from the default
+	0.793 - 0.113,  # reference base linear # Note i should do FW kinematics and subscrabt the difference of z from the default
 	1.0, # reference base quaternion
 	0.0,
 	0.0,
