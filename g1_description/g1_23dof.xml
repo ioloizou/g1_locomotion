@@ -73,6 +73,19 @@
                   <geom size="0.005" pos="-0.05 -0.025 -0.03" rgba="0.2 0.2 0.2 1"/>
                   <geom size="0.005" pos="0.12 0.03 -0.03" rgba="0.2 0.2 0.2 1"/>
                   <geom size="0.005" pos="0.12 -0.03 -0.03" rgba="0.2 0.2 0.2 1"/>
+                  
+                  <!-- Plane contact sites (four corners) -->
+                  <site name="left_foot_upper_left" pos="0.12 0.03 -0.03" size="0.01" rgba="0 1 0 0.5"/>
+                  <site name="left_foot_upper_right" pos="0.12 -0.03 -0.03" size="0.01" rgba="0 1 0 0.5"/>
+                  <site name="left_foot_lower_left" pos="-0.05 0.025 -0.03" size="0.01" rgba="0 1 0 0.5"/>
+                  <site name="left_foot_lower_right" pos="-0.05 -0.025 -0.03" size="0.01" rgba="0 1 0 0.5"/>
+                  
+                  <!-- Line contact sites -->
+                  <site name="left_foot_line_contact_upper" pos="0.12 0.0 -0.03" size="0.01" rgba="0 0 1 0.5"/>
+                  <site name="left_foot_line_contact_lower" pos="-0.05 0.0 -0.03" size="0.01" rgba="0 0 1 0.5"/>
+                  
+                  <!-- Point contact site -->
+                  <site name="left_foot_point_contact" pos="0.0 0.0 -0.03" size="0.01" rgba="1 0 0 0.5"/>
                 </body>
               </body>
             </body>
@@ -112,6 +125,19 @@
                   <geom size="0.005" pos="-0.05 -0.025 -0.03" rgba="0.2 0.2 0.2 1"/>
                   <geom size="0.005" pos="0.12 0.03 -0.03" rgba="0.2 0.2 0.2 1"/>
                   <geom size="0.005" pos="0.12 -0.03 -0.03" rgba="0.2 0.2 0.2 1"/>
+                  
+                  <!-- Plane contact sites (four corners) -->
+                  <site name="right_foot_upper_left" pos="0.12 0.03 -0.03" size="0.01" rgba="0 1 0 0.5"/>
+                  <site name="right_foot_upper_right" pos="0.12 -0.03 -0.03" size="0.01" rgba="0 1 0 0.5"/>
+                  <site name="right_foot_lower_left" pos="-0.05 0.025 -0.03" size="0.01" rgba="0 1 0 0.5"/>
+                  <site name="right_foot_lower_right" pos="-0.05 -0.025 -0.03" size="0.01" rgba="0 1 0 0.5"/>
+                  
+                  <!-- Line contact sites -->
+                  <site name="right_foot_line_contact_upper" pos="0.12 0.0 -0.03" size="0.01" rgba="0 0 1 0.5"/>
+                  <site name="right_foot_line_contact_lower" pos="-0.05 0.0 -0.03" size="0.01" rgba="0 0 1 0.5"/>
+                  
+                  <!-- Point contact site -->
+                  <site name="right_foot_point_contact" pos="0.0 0.0 -0.03" size="0.01" rgba="1 0 0 0.5"/>
                 </body>
               </body>
             </body>
