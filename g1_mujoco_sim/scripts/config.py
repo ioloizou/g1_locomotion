@@ -3,10 +3,10 @@ q_init = [
 	0.0,
 	0.0,
 	0.793 - 0.113,  # reference base linear # Note i should do FW kinematics and subscrabt the difference of z from the default
-	1.0, # reference base quaternion
+	0.0, 
 	0.0,
 	0.0,
-	0.0,  
+	1.0, # reference base quaternion 
 	## left leg
 	-0.6,  # left_hip_pitch_joint
 	0.0,  # left_hip_roll_joint
