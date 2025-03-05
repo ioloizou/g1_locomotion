@@ -59,7 +59,8 @@ class G1MujocoSimulation:
     def sim_step(self):
         """Perform a single simulation step."""
         tic()
-        ddq, forces = WBID.stepProblem(self.permute_muj_to_xbi(self.data.qpos), self.data.qvel, self.sim_time)
+        
+        WBID.stepProblem(self.permute_muj_to_xbi(self.data.qpos), self.data.qvel, self.sim_time)
 
         tau = WBID.getInverseDynamics()
 

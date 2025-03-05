@@ -8,11 +8,20 @@ from pyopensot.constraints.force import FrictionCone
 import pyopensot as pysot
 from ttictoc import tic, toc
 
-import rospy
-import tf
-from sensor_msgs.msg import JointState
-from geometry_msgs.msg import TransformStamped, WrenchStamped
+def MinimizeVariable(name, opt_var): 
+	'''Task to regularize a variable using a generic task'''
+	A = opt_var.getM()
 
+	# The minus because y = Mx + q is mapped on ||Ax - b|| 
+	b = -opt_var.getq()
+	task = pysot.GenericTask(name, A, b, opt_var)
+
+
+	# Setting the regularization weight.
+	task.setWeight(1.)
+	task.update()
+
+	return task
 
 class WholeBodyID:
     def __init__(self, urdf, dt, q_init, friction_coef=0.8):
@@ -52,16 +61,29 @@ class WholeBodyID:
 
         # Set CoM tracking task
         self.com = CoM(self.model, self.variables.getVariable("qddot"))
-        self.com.setLambda(1000.0, 600.0)
+        com_gain = 1.
+        com_Kp = np.eye(3) * 100. * com_gain
+        self.com.setKp(com_Kp)
+        com_Kd = np.diag([30., 30., 50.]) * com_gain
+        self.com.setKd(com_Kd)
+        self.com.setLambda(1.0, 1.0)
+
+        # self.com.setKd(50)
+        # self.com.setLambda(1.0, 1.0)
         # FK at initial config
-        com_ref, vel_ref, acc_ref = self.com.getReference()
-        self.com0 = com_ref.copy()
+        self.com_ref, vel_ref, acc_ref = self.com.getReference()
+        self.com0 = self.com_ref.copy()
 
         # Set the whole Cartesian task but later only orientation will be used
         base = Cartesian(
             "base", self.model, "world", "pelvis", self.variables.getVariable("qddot")
         )
-        base.setLambda(100.0, 70.0)
+        base_gain = 1.
+        base_Kp = np.diag([1., 1., 1., 10., 10., 20.]) * base_gain
+        base.setKp(base_Kp)
+        base_Kd = np.diag([1., 1., 1., 50., 50., 50.]) * base_gain
+        base.setKd(base_Kd)
+        base.setLambda(1.0, 1.0)
 
         # Set the contact task
         contact_tasks = list()
@@ -79,17 +101,27 @@ class WholeBodyID:
                     self.variables.getVariable("qddot"),
                 )
             )
-
+        posture_gain = 10.
         posture = Postural(self.model, self.variables.getVariable("qddot"))
-        posture.setLambda(300.0, 20.0)
+        posture_Kp = np.eye(self.model.nv) * 2. * posture_gain
+        posture.setKp(posture_Kp)
+        posture_Kd = np.diag([0.2] * self.model.nv) * posture_gain
+        posture.setKd(posture_Kd)
+        posture.setLambda(1.0, 1.0)   
 
         # Set the Angular momentum task
         angular_momentum = AngularMomentum(
             self.model, self.variables.getVariable("qddot")
         )
+        angular_momentum_Kd = np.diag([3.] * 3)
+        angular_momentum.setMomentumGain(angular_momentum_Kd)
+        angular_momentum.setLambda(1.)
+
+        # Regularization of acceleration
+        req_qddot = MinimizeVariable("acceleration", self.variables.getVariable("qddot"))
 
         # For the base task taking only the orientation part
-        self.stack = 0.1 * self.com + 0.1 * (base % [3, 4, 5]) +0.1*angular_momentum + 0.1 * posture
+        self.stack = 1.0*self.com + 1.0*(base%[3, 4, 5]) + 0.02*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]) + 0.3*angular_momentum + 0.005*req_qddot
 
         for i in range(len(cartesian_contact_task_frames)):
             self.stack = self.stack + 10.0 * (contact_tasks[i])
@@ -138,12 +170,14 @@ class WholeBodyID:
         self.model.update()
 
     def setReference(self, t):
-        # alpha = 0.2
-        com_ref = self.com0 
-        # + alpha * np.array(
-            # [0.0, np.sin(3.1415 * t), np.cos(3.1415 * t)]
-        # )
-        self.com.setReference(com_ref)
+        alpha = 0.04
+        self.com_ref[0] = self.com0[0] 
+        self.com_ref[1] = self.com0[1] + alpha * np.sin(3.1415 * t) 
+        self.com_ref[2] = self.com0[2] + alpha * np.cos(2* 3.1415 * t)
+        print("t", t)
+        print("com0", self.com0)
+        print("self.com_ref", self.com_ref)
+        self.com.setReference(self.com_ref)
 
     def solveQP(self):
         self.x = self.solver.solve()
