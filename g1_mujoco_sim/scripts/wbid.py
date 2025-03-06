@@ -23,6 +23,32 @@ def MinimizeVariable(name, opt_var):
 
 	return task
 
+def Wrench(name, distal_link, base_link, wrench):
+	'''Task to minimize f-fd using a generic task'''
+
+	# print(wrench)
+	# print(wrench.getM().shape)
+	# print(wrench.getq())
+
+	A = np.eye(3)
+	b =	- wrench.getq()
+	
+	return pysot.GenericTask(name, A, b, wrench) 
+
+def setDesiredForce(Wrench_task, wrench_desired, wrench):
+	# b = -(wrench - wrench_desired).getq()
+
+	b = wrench_desired - wrench.getq()
+	
+	print(f"b: {b}")
+	
+	# print(f'wrench_desired_dimensions: {wrench_desired.shape}')
+	# print(f'wrench: {wrench}')
+	# print(wrench.getM().shape)
+	# print(f'wrench_dimensions: {wrench.getq().shape}')
+	# print(f'b_dimensions: {b.shape}')
+	Wrench_task.setb(b)
+
 class WholeBodyID:
     def __init__(self, urdf, dt, q_init, friction_coef=0.8):
         self.dt = dt
@@ -126,6 +152,12 @@ class WholeBodyID:
         for i in range(len(cartesian_contact_task_frames)):
             self.stack = self.stack + 10.0 * (contact_tasks[i])
 
+        # Task for factual - fdesired
+        self.wrench_tasks = list()
+        for contact_frame in self.contact_frames:
+            self.wrench_tasks.append(Wrench(contact_frame, contact_frame, "pelvis", self.variables.getVariable(contact_frame)))
+            self.stack = self.stack + 0.01*(self.wrench_tasks[-1])
+        
         force_variables = list()
         for i in range(len(self.contact_frames)):
             force_variables.append(self.variables.getVariable(self.contact_frames[i]))
@@ -169,15 +201,21 @@ class WholeBodyID:
         self.model.setJointVelocity(dq)
         self.model.update()
 
-    def setReference(self, t):
-        alpha = 0.04
-        self.com_ref[0] = self.com0[0] 
-        self.com_ref[1] = self.com0[1] + alpha * np.sin(3.1415 * t) 
-        self.com_ref[2] = self.com0[2] + alpha * np.cos(2* 3.1415 * t)
-        print("t", t)
-        print("com0", self.com0)
-        print("self.com_ref", self.com_ref)
-        self.com.setReference(self.com_ref)
+    def setReference(self, x_opt1, u_opt0, t):
+        if x_opt1 is None:
+            alpha = 0.04
+            self.com_ref[0] = self.com0[0] 
+            self.com_ref[1] = self.com0[1] + alpha * np.sin(3.1415 * t) 
+            self.com_ref[2] = self.com0[2] + alpha * np.cos(2* 3.1415 * t)
+            print("t", t)
+            print("com0", self.com0)
+            print("self.com_ref", self.com_ref)
+            self.com.setReference(self.com_ref)
+        else:
+            self.com.setReference(x_opt1[3:6])
+
+        for i in range(len(self.contact_frames)):
+            setDesiredForce(self.wrench_tasks[i], u_opt0[i*3:i*3+3], self.variables.getVariable(self.contact_frames[i]))
 
     def solveQP(self):
         self.x = self.solver.solve()
