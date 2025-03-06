@@ -46,7 +46,7 @@ class G1MujocoSimulation:
 
         # Real-time settings
         self.sim_timestep = self.model.opt.timestep
-        self.real_time_factor = 0.01  # 1.0 = real time
+        self.real_time_factor = 0.5  # 1.0 = real time
 
         # Create viewer
         self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
@@ -64,10 +64,8 @@ class G1MujocoSimulation:
        
     def sim_step(self):
         """Perform a single simulation step."""
+        
         tic()
-
-        
-        
         # Set the initial state for the MPC
         q_euler = np.array(tf.transformations.euler_from_quaternion(self.permute_muj_to_xbi(self.data.qpos)[3:7]))
         com_vel = WBID.model.getCOMJacobian() @ self.data.qvel
@@ -106,10 +104,11 @@ class G1MujocoSimulation:
 
         # Solve the MPC
         u_opt0, x_opt1 = MPC.update(contact_horizon, c_horizon, p_com_horizon, x_current = MPC.x0 , one_rollout = True)
+        print("toc() ===========================", toc())
 
         WBID.updateModel(self.permute_muj_to_xbi(self.data.qpos), self.data.qvel)
-        WBID.setReference(x_opt1[3:6].flatten(), u_opt0.flatten(), self.sim_time)
         WBID.stack.update()
+        WBID.setReference(x_opt1[1, 3:6].flatten(), u_opt0.flatten(), self.sim_time)
         WBID.solveQP()
 
         # WBID.stepProblem(self.permute_muj_to_xbi(self.data.qpos), self.data.qvel, self.sim_time)
@@ -124,7 +123,6 @@ class G1MujocoSimulation:
         if self.pass_count >= 2000:
             exit()
 
-        print("toc() ===========================", toc())
         mujoco.mj_step(self.model, self.data)
 
     def run(self):

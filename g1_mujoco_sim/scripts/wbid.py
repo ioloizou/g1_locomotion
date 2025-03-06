@@ -201,8 +201,8 @@ class WholeBodyID:
         self.model.setJointVelocity(dq)
         self.model.update()
 
-    def setReference(self, x_opt1, u_opt0, t):
-        if x_opt1 is None:
+    def setReference(self, com_opt1, u_opt0, t):
+        if com_opt1 is None:
             alpha = 0.04
             self.com_ref[0] = self.com0[0] 
             self.com_ref[1] = self.com0[1] + alpha * np.sin(3.1415 * t) 
@@ -212,7 +212,7 @@ class WholeBodyID:
             print("self.com_ref", self.com_ref)
             self.com.setReference(self.com_ref)
         else:
-            self.com.setReference(x_opt1[3:6])
+            self.com.setReference(com_opt1)
 
         for i in range(len(self.contact_frames)):
             setDesiredForce(self.wrench_tasks[i], u_opt0[i*3:i*3+3], self.variables.getVariable(self.contact_frames[i]))
