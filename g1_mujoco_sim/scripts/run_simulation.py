@@ -72,8 +72,8 @@ class G1MujocoSimulation:
         
         MPC.x0[0:3] = q_euler.copy().reshape(3, 1)  # Get the initial position of the base
         MPC.x0[3:6] = WBID.model.getCOM().reshape(3, 1)   # Get the initial position of the com
-        MPC.x0[6:9] = com_vel.reshape(3, 1)   # Get the initial velocity of the com
-        MPC.x0[9:12] = self.data.qvel[:3].reshape(3, 1)   # Get the initial rotation of the base
+        MPC.x0[6:9] = self.data.qvel[3:6].reshape(3, 1)   # Get the initial rotation of the base
+        MPC.x0[9:12] = com_vel.reshape(3, 1)   # Get the initial velocity of the com
         MPC.x0[12] = MPC.g
         
         # Setup reference horizon.  
