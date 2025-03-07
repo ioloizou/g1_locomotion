@@ -1,0 +1,3 @@
+[submodule "g1_mpc"]
+	path = g1_mpc
+	url = https://github.com/ioloizou/srbd_mpc.git
