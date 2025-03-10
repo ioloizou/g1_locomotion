@@ -16,4 +16,8 @@ geometry_msgs/Vector3 angular_velocity
 # CoM linear velocity (vx, vy, vz) [m/s]
 geometry_msgs/Vector3 velocity
 
+# Gravity [m/s^2]
+float64 gravity
 
+# Array of contact points with their corresponding information
+ContactPoint[] contacts

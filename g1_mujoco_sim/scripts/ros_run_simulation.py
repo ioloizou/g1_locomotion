@@ -10,15 +10,63 @@ import mujoco
 import mujoco_viewer
 import rospkg
 import rospy
+import tf
 import numpy as np
 from ttictoc import tic, toc
+
 from std_msgs.msg import String, Header
-from g1_msgs.msg import SRBD_state
 from geometry_msgs.msg import Vector3
+from g1_msgs.msg import SRBD_state
+from g1_msgs.msg import ContactPoint
 
 from config import q_init
 from wbid import WholeBodyID
 from srbd_mpc import mpc
+
+def publish_current_state(pub_srbd, 
+                          srbd_state_msg, 
+                          base_orientation_curr, 
+                          com_position_curr, 
+                          base_angular_velocity_curr, 
+                          com_linear_velocity_curr,
+                          foot_positions_curr 
+                          ):
+    """
+    Publish the current state of the robot to the ROS topic.
+    """
+    
+    srbd_state_msg.header.stamp = rospy.Time.now()
+    
+    srbd_state_msg.orientation.x = base_orientation_curr[0]
+    srbd_state_msg.orientation.y = base_orientation_curr[1]
+    srbd_state_msg.orientation.z = base_orientation_curr[2]
+    
+    srbd_state_msg.position.x = com_position_curr[0]
+    srbd_state_msg.position.y = com_position_curr[1]
+    srbd_state_msg.position.z = com_position_curr[2]
+    
+    srbd_state_msg.angular_velocity.x = base_angular_velocity_curr[0]
+    srbd_state_msg.angular_velocity.y = base_angular_velocity_curr[1]
+    srbd_state_msg.angular_velocity.z = base_angular_velocity_curr[2]
+    
+    srbd_state_msg.linear_velocity.x = com_linear_velocity_curr[0]
+    srbd_state_msg.linear_velocity.y = com_linear_velocity_curr[1]
+    srbd_state_msg.linear_velocity.z = com_linear_velocity_curr[2]
+
+    for i, contact_name in enumerate(["left_foot_line_contact_lower", "left_foot_line_contact_upper", "right_foot_line_contact_lower", "right_foot_line_contact_upper"]):
+        
+        contact_point = ContactPoint()  
+        
+        contact_point.name = String(contact_name)
+        contact_point.position.x = Vector3(foot_positions_curr[i*3:i*3+3])
+        contact_point.position.y = Vector3(foot_positions_curr[i*3:i*3+3])
+        contact_point.position.z = Vector3(foot_positions_curr[i*3:i*3+3])
+
+        # Force and contact state are not needed to pub to MPC
+        srbd_state_msg.contact_points.append(contact_point)
+
+    pub_srbd.publish(srbd_state_msg)
+
 
 def loadURDF(pkg_path):
     with open(
@@ -64,7 +112,7 @@ class G1MujocoSimulation:
         xbi_qpos_perm[3] = xbi_qpos[6]
         return xbi_qpos_perm
        
-    def sim_step(self):
+    def sim_step(self, pub_srbd, srbd_state_msg):
         """Perform a single simulation step."""
         
         tic()
@@ -76,6 +124,8 @@ class G1MujocoSimulation:
         
         right_heel = WBID.model.getPose("right_foot_line_contact_lower").translation
         right_toe = WBID.model.getPose("right_foot_line_contact_upper").translation
+
+        foot_positions_curr = np.array([left_heel, left_toe, right_heel, right_toe])
 
         WBID.updateModel(self.permute_muj_to_xbi(self.data.qpos), self.data.qvel)
         WBID.stack.update()
@@ -95,16 +145,30 @@ class G1MujocoSimulation:
 
         mujoco.mj_step(self.model, self.data)
 
+        # Publish the current state
+        base_orientation_curr = tf.transformations.euler_from_quaternion(self.permute_muj_to_xbi(self.data.qpos[3:7]))
+        com_position_curr = WBID.com.getReference()
+        base_angular_velocity_curr = self.data.qvel[3:6]
+        com_linear_velocity_curr =  WBID.model.getCOMJacobian() @ self.data.qvel
+        publish_current_state(pub_srbd,
+                              srbd_state_msg,
+                              base_orientation_curr,
+                              com_position_curr,
+                              base_angular_velocity_curr,
+                              com_linear_velocity_curr,
+                              foot_positions_curr
+                              )
+
     def run(self):
         """Run simple real-time simulation."""
         prev_time = time.time()
         self.sim_time = 0.0
         self.pass_count = 0
-        
-        pub = rospy.Publisher("hello_pub_test", String, queue_size=10)
-        
+                
         pub_srbd = rospy.Publisher("srbd_pub_test", SRBD_state, queue_size=10)
         
+        srbd_state_msg = SRBD_state()
+
         while self.running and not rospy.is_shutdown() and self.viewer.is_alive:
             # Get real time elapsed since last step
             current_time = time.time()
@@ -119,28 +183,9 @@ class G1MujocoSimulation:
 
             # Step the simulation
             for _ in range(steps):
-                self.sim_step()
+                self.sim_step(pub_srbd, srbd_state_msg)
                 self.sim_time += self.sim_timestep
-                hello_str = "Hello from ROS! %s" % rospy.get_time()
-                pub.publish(hello_str)
-            
-                srbd_state_msg = SRBD_state()
 
-                srbd_state_msg.header.stamp = rospy.Time.now()
-                
-                srbd_state_msg.header.frame_id = "g1_mujoco_sim"
-                
-                srbd_state_msg.header.frame_id = "hello_frame"
-                srbd_state_msg.position.x = 2
-                srbd_state_msg.position.y = 2
-                srbd_state_msg.position.z = 2
-                srbd_state_msg.orientation.x = 3
-                srbd_state_msg.orientation.y = 3
-                srbd_state_msg.orientation.z = 3
-
-                pub_srbd.publish(srbd_state_msg)
-
-            # rate.sleep()                
             # Render the current state
             self.viewer.render()
 

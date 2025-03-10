@@ -153,10 +153,10 @@ class WholeBodyID:
             self.stack = self.stack + 10.0 * (contact_tasks[i])
 
         # Task for factual - fdesired
-        self.wrench_tasks = list()
-        for contact_frame in self.contact_frames:
-            self.wrench_tasks.append(Wrench(contact_frame, contact_frame, "pelvis", self.variables.getVariable(contact_frame)))
-            self.stack = self.stack + 0.01*(self.wrench_tasks[-1])
+        # self.wrench_tasks = list()
+        # for contact_frame in self.contact_frames:
+        #     self.wrench_tasks.append(Wrench(contact_frame, contact_frame, "pelvis", self.variables.getVariable(contact_frame)))
+        #     self.stack = self.stack + 0.01*(self.wrench_tasks[-1])
         
         force_variables = list()
         for i in range(len(self.contact_frames)):
@@ -201,12 +201,12 @@ class WholeBodyID:
         self.model.setJointVelocity(dq)
         self.model.update()
 
-    def setReference(self, com_opt1, u_opt0, t):
+    def setReference(self, t, com_opt1=None, u_opt0=None):
         if com_opt1 is None:
             alpha = 0.04
             self.com_ref[0] = self.com0[0] 
-            self.com_ref[1] = self.com0[1] + alpha * np.sin(3.1415 * t) 
-            self.com_ref[2] = self.com0[2] + alpha * np.cos(2* 3.1415 * t)
+            self.com_ref[1] = self.com0[1] #+ alpha * np.sin(3.1415 * t) 
+            self.com_ref[2] = self.com0[2] #+ alpha * np.cos(2* 3.1415 * t)
             print("t", t)
             print("com0", self.com0)
             print("self.com_ref", self.com_ref)
@@ -214,8 +214,8 @@ class WholeBodyID:
         else:
             self.com.setReference(com_opt1)
 
-        for i in range(len(self.contact_frames)):
-            setDesiredForce(self.wrench_tasks[i], u_opt0[i*3:i*3+3], self.variables.getVariable(self.contact_frames[i]))
+        # for i in range(len(self.contact_frames)):
+        #     setDesiredForce(self.wrench_tasks[i], u_opt0[i*3:i*3+3], self.variables.getVariable(self.contact_frames[i]))
 
     def solveQP(self):
         self.x = self.solver.solve()
