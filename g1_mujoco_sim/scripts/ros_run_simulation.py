@@ -14,17 +14,15 @@ import tf
 import numpy as np
 from ttictoc import tic, toc
 
-from std_msgs.msg import String, Header
-from geometry_msgs.msg import Vector3
-from g1_msgs.msg import SRBD_state
-from g1_msgs.msg import ContactPoint
+from g1_msgs.msg import SRBD_state, ContactPoint
 
 from config import q_init
 from wbid import WholeBodyID
 from srbd_mpc import mpc
 
 def publish_current_state(pub_srbd, 
-                          srbd_state_msg, 
+                          srbd_state_msg,
+                          contact_point_msg, 
                           base_orientation_curr, 
                           com_position_curr, 
                           base_angular_velocity_curr, 
@@ -35,6 +33,7 @@ def publish_current_state(pub_srbd,
     Publish the current state of the robot to the ROS topic.
     """
     
+    srbd_state_msg.contacts = []
     srbd_state_msg.header.stamp = rospy.Time.now()
     
     srbd_state_msg.orientation.x = base_orientation_curr[0]
@@ -53,18 +52,17 @@ def publish_current_state(pub_srbd,
     srbd_state_msg.linear_velocity.y = com_linear_velocity_curr[1]
     srbd_state_msg.linear_velocity.z = com_linear_velocity_curr[2]
 
+    srbd_state_msg.gravity = MPC.g
+    
     for i, contact_name in enumerate(["left_foot_line_contact_lower", "left_foot_line_contact_upper", "right_foot_line_contact_lower", "right_foot_line_contact_upper"]):
-        
-        contact_point = ContactPoint()  
-        
-        contact_point.name = String(contact_name)
-        contact_point.position.x = Vector3(foot_positions_curr[i*3:i*3+3])
-        contact_point.position.y = Vector3(foot_positions_curr[i*3:i*3+3])
-        contact_point.position.z = Vector3(foot_positions_curr[i*3:i*3+3])
+        contact_point_msg = ContactPoint()
+        contact_point_msg.name = contact_name
+        contact_point_msg.position.x = foot_positions_curr[i, 0]
+        contact_point_msg.position.y = foot_positions_curr[i, 1]
+        contact_point_msg.position.z = foot_positions_curr[i, 2]
 
-        # Force and contact state are not needed to pub to MPC
-        srbd_state_msg.contact_points.append(contact_point)
-
+        srbd_state_msg.contacts.append(contact_point_msg)
+    
     pub_srbd.publish(srbd_state_msg)
 
 
@@ -112,7 +110,7 @@ class G1MujocoSimulation:
         xbi_qpos_perm[3] = xbi_qpos[6]
         return xbi_qpos_perm
        
-    def sim_step(self, pub_srbd, srbd_state_msg):
+    def sim_step(self, pub_srbd, srbd_state_msg, contact_point_msg):
         """Perform a single simulation step."""
         
         tic()
@@ -146,12 +144,14 @@ class G1MujocoSimulation:
         mujoco.mj_step(self.model, self.data)
 
         # Publish the current state
-        base_orientation_curr = tf.transformations.euler_from_quaternion(self.permute_muj_to_xbi(self.data.qpos[3:7]))
-        com_position_curr = WBID.com.getReference()
+        permuted_qpos = self.permute_muj_to_xbi(self.data.qpos)
+        base_orientation_curr = tf.transformations.euler_from_quaternion(permuted_qpos[3:7])
+        com_position_curr, _ , _ = WBID.com.getReference()
         base_angular_velocity_curr = self.data.qvel[3:6]
         com_linear_velocity_curr =  WBID.model.getCOMJacobian() @ self.data.qvel
         publish_current_state(pub_srbd,
                               srbd_state_msg,
+                              contact_point_msg,
                               base_orientation_curr,
                               com_position_curr,
                               base_angular_velocity_curr,
@@ -165,9 +165,10 @@ class G1MujocoSimulation:
         self.sim_time = 0.0
         self.pass_count = 0
                 
-        pub_srbd = rospy.Publisher("srbd_pub_test", SRBD_state, queue_size=10)
+        pub_srbd = rospy.Publisher("srbd_current", SRBD_state, queue_size=10)
         
         srbd_state_msg = SRBD_state()
+        contact_point_msg = ContactPoint()
 
         while self.running and not rospy.is_shutdown() and self.viewer.is_alive:
             # Get real time elapsed since last step
@@ -183,7 +184,7 @@ class G1MujocoSimulation:
 
             # Step the simulation
             for _ in range(steps):
-                self.sim_step(pub_srbd, srbd_state_msg)
+                self.sim_step(pub_srbd, srbd_state_msg, contact_point_msg)
                 self.sim_time += self.sim_timestep
 
             # Render the current state
