@@ -14,7 +14,7 @@ geometry_msgs/Vector3 position
 geometry_msgs/Vector3 angular_velocity
 
 # CoM linear velocity (vx, vy, vz) [m/s]
-geometry_msgs/Vector3 velocity
+geometry_msgs/Vector3 linear_velocity
 
 # Gravity [m/s^2]
 float64 gravity
