@@ -153,10 +153,10 @@ class WholeBodyID:
             self.stack = self.stack + 10.0 * (contact_tasks[i])
 
         # Task for factual - fdesired
-        # self.wrench_tasks = list()
-        # for contact_frame in self.contact_frames:
-        #     self.wrench_tasks.append(Wrench(contact_frame, contact_frame, "pelvis", self.variables.getVariable(contact_frame)))
-        #     self.stack = self.stack + 0.01*(self.wrench_tasks[-1])
+        self.wrench_tasks = list()
+        for contact_frame in self.contact_frames:
+            self.wrench_tasks.append(Wrench(contact_frame, contact_frame, "pelvis", self.variables.getVariable(contact_frame)))
+            self.stack = self.stack + 0.01*(self.wrench_tasks[-1])
         
         force_variables = list()
         for i in range(len(self.contact_frames)):
@@ -214,8 +214,8 @@ class WholeBodyID:
         else:
             self.com.setReference(com_opt1)
 
-        # for i in range(len(self.contact_frames)):
-        #     setDesiredForce(self.wrench_tasks[i], u_opt0[i*3:i*3+3], self.variables.getVariable(self.contact_frames[i]))
+        for i in range(len(self.contact_frames)):
+            setDesiredForce(self.wrench_tasks[i], u_opt0[i*3:i*3+3], self.variables.getVariable(self.contact_frames[i]))
 
     def solveQP(self):
         self.x = self.solver.solve()

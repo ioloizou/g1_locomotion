@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-
-
-import sys
 import os
-# To be able to import srbd_mpc
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
 import time
 import mujoco
 import mujoco_viewer
@@ -18,7 +13,31 @@ from g1_msgs.msg import SRBD_state, ContactPoint
 
 from config import q_init
 from wbid import WholeBodyID
-from srbd_mpc import mpc
+
+def callback_mpc_solution(self, msg):
+    """
+    Subscribe to the MPC solution and update the reference trajectory.
+    """
+    # Unpack the MPC solution from the incoming message
+    self.x_opt1[0] = msg.orientation.x
+    self.x_opt1[1] = msg.orientation.y
+    self.x_opt1[2] = msg.orientation.z
+    self.x_opt1[3] = msg.position.x
+    self.x_opt1[4] = msg.position.y
+    self.x_opt1[5] = msg.position.z
+    self.x_opt1[6] = msg.angular_velocity.x
+    self.x_opt1[7] = msg.angular_velocity.y
+    self.x_opt1[8] = msg.angular_velocity.z
+    self.x_opt1[9] = msg.linear_velocity.x
+    self.x_opt1[10] = msg.linear_velocity.y
+    self.x_opt1[11] = msg.linear_velocity.z
+    self.x_opt1[12] = msg.gravity
+
+    # Get the optimal GRF from contact point
+    for i, contact_point in enumerate(msg.contacts):
+        self.u_opt0[i * 3: i * 3 + 3] = [contact_point.force.x, contact_point.force.y, contact_point.force.z]
+
+    
 
 def publish_current_state(pub_srbd, 
                           srbd_state_msg,
@@ -35,6 +54,7 @@ def publish_current_state(pub_srbd,
     
     srbd_state_msg.contacts = []
     srbd_state_msg.header.stamp = rospy.Time.now()
+    srbd_state_msg.header.frame_id = "SRBD"
     
     srbd_state_msg.orientation.x = base_orientation_curr[0]
     srbd_state_msg.orientation.y = base_orientation_curr[1]
@@ -52,7 +72,8 @@ def publish_current_state(pub_srbd,
     srbd_state_msg.linear_velocity.y = com_linear_velocity_curr[1]
     srbd_state_msg.linear_velocity.z = com_linear_velocity_curr[2]
 
-    srbd_state_msg.gravity = MPC.g
+    # I need to load gravity from mujoco and also in MPC
+    srbd_state_msg.gravity = -9.80665
     
     for i, contact_name in enumerate(["left_foot_line_contact_lower", "left_foot_line_contact_upper", "right_foot_line_contact_lower", "right_foot_line_contact_upper"]):
         contact_point_msg = ContactPoint()
@@ -77,6 +98,9 @@ class G1MujocoSimulation:
     def __init__(self, q_init):
         rospy.init_node("g1_mujoco_sim", anonymous=True)
 
+        self.x_opt1 = np.zeros(13)  
+        self.u_opt0 = np.zeros(12)    
+
         # Find the model path
         rospack = rospkg.RosPack()
         pkg_path = rospack.get_path("g1_mujoco_sim")
@@ -94,7 +118,7 @@ class G1MujocoSimulation:
 
         # Real-time settings
         self.sim_timestep = self.model.opt.timestep
-        self.real_time_factor = 1.  # 1.0 = real time
+        self.real_time_factor = 0.01  # 1.0 = real time
 
         # Create viewer
         self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
@@ -114,7 +138,6 @@ class G1MujocoSimulation:
         """Perform a single simulation step."""
         
         tic()
-        # print("x_ref_hor", MPC.x_ref_hor)
 
         # Current foot heel and toe positions
         left_heel = WBID.model.getPose("left_foot_line_contact_lower").translation
@@ -127,7 +150,7 @@ class G1MujocoSimulation:
 
         WBID.updateModel(self.permute_muj_to_xbi(self.data.qpos), self.data.qvel)
         WBID.stack.update()
-        WBID.setReference(self.sim_time)
+        WBID.setReference(self.sim_time , self.x_opt1[3:6], self.u_opt0)
         WBID.solveQP()
 
         
@@ -146,9 +169,10 @@ class G1MujocoSimulation:
         # Publish the current state
         permuted_qpos = self.permute_muj_to_xbi(self.data.qpos)
         base_orientation_curr = tf.transformations.euler_from_quaternion(permuted_qpos[3:7])
-        com_position_curr, _ , _ = WBID.com.getReference()
+        com_position_curr = WBID.model.getCOM()
         base_angular_velocity_curr = self.data.qvel[3:6]
         com_linear_velocity_curr =  WBID.model.getCOMJacobian() @ self.data.qvel
+        
         publish_current_state(pub_srbd,
                               srbd_state_msg,
                               contact_point_msg,
@@ -164,11 +188,16 @@ class G1MujocoSimulation:
         prev_time = time.time()
         self.sim_time = 0.0
         self.pass_count = 0
-                
-        pub_srbd = rospy.Publisher("srbd_current", SRBD_state, queue_size=10)
-        
+
+        # Create a message for the SRBD state        
         srbd_state_msg = SRBD_state()
         contact_point_msg = ContactPoint()
+
+        # Create a publisher for the SRBD state        
+        pub_srbd = rospy.Publisher("/srbd_current", SRBD_state, queue_size=10)
+
+        # Create a subscriber for the MPC solution
+        sub_mpc = rospy.Subscriber("/mpc_solution", SRBD_state, callback_mpc_solution)
 
         while self.running and not rospy.is_shutdown() and self.viewer.is_alive:
             # Get real time elapsed since last step
@@ -196,10 +225,6 @@ if __name__ == "__main__":
     try:
         # Setup the simulation
         sim = G1MujocoSimulation(q_init)
-        
-        # Setup the MPC
-        MPC = mpc.MPC(dt = 0.04)
-        MPC.init_matrices()
 
         # Setup the whole body ID
         WBID = WholeBodyID(sim.urdf, sim.sim_timestep, q_init)
@@ -210,11 +235,9 @@ if __name__ == "__main__":
     
     except rospy.ROSInterruptException:
         pass
-    # except KeyboardInterrupt:
-    #     print("Simulation interrupted by user.")
-    # finally:
-    #     if sim.viewer:
-    #         sim.viewer.close()
-    #     rospy.signal_shutdown("Simulation closed.")
-    #     # rospy.loginfo("Simulation closed.")
-    #     # rospy.signal_shutdown("Simulation closed.")
+    except KeyboardInterrupt:
+        print("Simulation interrupted by user.")
+    finally:
+        if sim.viewer:
+            sim.viewer.close()
+        rospy.signal_shutdown("Simulation closed.")
