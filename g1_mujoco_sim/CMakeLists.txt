@@ -8,7 +8,6 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   tf
   tf2_ros
-  pinocchio
 )
 
 catkin_package()
@@ -23,7 +22,6 @@ catkin_install_python(PROGRAMS
 )
 
 install(DIRECTORY
-  config
-  models
+  scripts
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
