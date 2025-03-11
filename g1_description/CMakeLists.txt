@@ -8,7 +8,15 @@ catkin_package()
 
 find_package(roslaunch)
 
-foreach(dir config launch meshes urdf)
+file(GLOB urdf "*.urdf")
+file(GLOB xml "*.xml")
+
+foreach(dir meshes)
 	install(DIRECTORY ${dir}/
 		DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/${dir})
+endforeach(dir)
+
+foreach(filename ${urdf} ${xml})
+	install(FILES ${filename}
+		DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 endforeach(dir)
