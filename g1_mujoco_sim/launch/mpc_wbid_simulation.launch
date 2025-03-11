@@ -1,10 +1,10 @@
 <launch>
   <!-- Launch MPC to WBID node -->
-  <node name="mpc_to_wbid" pkg="g1_mpc" type="mpc_to_wbid" output="screen">
+  <node name="mpc_to_wbid" pkg="g1_mpc" type="mpc_to_wbid.py" output="screen">
   </node>
 
   <!-- Launch ROS simulation node -->
-  <node name="ros_run_simulation" pkg="g1_locomotion" type="ros_run_simulation" output="screen">
+  <node name="ros_run_simulation" pkg="g1_mujoco_sim" type="ros_run_simulation.py" output="screen">
   </node>
 
 </launch>

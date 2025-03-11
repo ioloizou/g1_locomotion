@@ -3,6 +3,7 @@ project(g1_mujoco_sim)
 
 find_package(catkin REQUIRED COMPONENTS
   rospy
+  roslaunch
   std_msgs
   sensor_msgs
   geometry_msgs
@@ -17,12 +18,14 @@ include_directories(
 )
 
 catkin_install_python(PROGRAMS
-  scripts/run_simulation.py
-  scripts/ros_run_simulation.py
+  src/run_simulation.py
+  src/ros_run_simulation.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
-install(DIRECTORY
-  src
+install(DIRECTORY 
+  src/ 
+  launch/
+  config/
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
