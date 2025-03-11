@@ -18,10 +18,11 @@ include_directories(
 
 catkin_install_python(PROGRAMS
   scripts/run_simulation.py
+  scripts/ros_run_simulation.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 install(DIRECTORY
-  scripts
+  src
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
