@@ -59,6 +59,9 @@ def publish_current_state(pub_srbd,
 
         srbd_state_msg.contacts.append(contact_point_msg)
     
+    # Debug print to verify what we're publishing
+    rospy.logdebug(f"Publishing SRBD state: pos={com_position_curr}, ori={base_orientation_curr}")
+    
     pub_srbd.publish(srbd_state_msg)
 
 
@@ -124,6 +127,8 @@ class G1MujocoSimulation:
         for i, contact_point in enumerate(msg.contacts):
             self.u_opt0[i * 3: i * 3 + 3] = [contact_point.force.x, contact_point.force.y, contact_point.force.z]
 
+        print("u_opt0\n", self.u_opt0)
+
     def permute_muj_to_xbi(self, xbi_qpos):
         """Convert mujoco qpos to xbi qpos."""
         # Place the 4th element at the 7th position
@@ -158,9 +163,9 @@ class G1MujocoSimulation:
         # Exclude floating base
         self.data.ctrl = tau[6:]
 
-        # self.pass_count += 1
-        # if self.pass_count >= 2000:
-        #     exit()
+        self.pass_count += 1
+        if self.pass_count >= 1:
+            exit()
 
         mujoco.mj_step(self.model, self.data)
 
