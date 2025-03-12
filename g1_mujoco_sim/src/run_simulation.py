@@ -14,7 +14,7 @@ import numpy as np
 from ttictoc import tic, toc
 import tf
 
-from g1_locomotion.g1_mujoco_sim.config.config import q_init
+from config import q_init
 from wbid import WholeBodyID
 from srbd_mpc import mpc
 

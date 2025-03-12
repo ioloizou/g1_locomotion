@@ -20,6 +20,8 @@ include_directories(
 catkin_install_python(PROGRAMS
   src/run_simulation.py
   src/ros_run_simulation.py
+  src/config.py
+  src/wbid.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

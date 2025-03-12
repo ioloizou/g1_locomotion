@@ -14,31 +14,6 @@ from g1_msgs.msg import SRBD_state, ContactPoint
 from config import q_init
 from wbid import WholeBodyID
 
-def callback_mpc_solution(self, msg):
-    """
-    Subscribe to the MPC solution and update the reference trajectory.
-    """
-    # Unpack the MPC solution from the incoming message
-    self.x_opt1[0] = msg.orientation.x
-    self.x_opt1[1] = msg.orientation.y
-    self.x_opt1[2] = msg.orientation.z
-    self.x_opt1[3] = msg.position.x
-    self.x_opt1[4] = msg.position.y
-    self.x_opt1[5] = msg.position.z
-    self.x_opt1[6] = msg.angular_velocity.x
-    self.x_opt1[7] = msg.angular_velocity.y
-    self.x_opt1[8] = msg.angular_velocity.z
-    self.x_opt1[9] = msg.linear_velocity.x
-    self.x_opt1[10] = msg.linear_velocity.y
-    self.x_opt1[11] = msg.linear_velocity.z
-    self.x_opt1[12] = msg.gravity
-
-    # Get the optimal GRF from contact point
-    for i, contact_point in enumerate(msg.contacts):
-        self.u_opt0[i * 3: i * 3 + 3] = [contact_point.force.x, contact_point.force.y, contact_point.force.z]
-
-    
-
 def publish_current_state(pub_srbd, 
                           srbd_state_msg,
                           contact_point_msg, 
@@ -126,6 +101,29 @@ class G1MujocoSimulation:
         # Running flag
         self.running = True
 
+    def callback_mpc_solution(self, msg):
+        """
+        Subscribe to the MPC solution and update the reference trajectory.
+        """
+        # Unpack the MPC solution from the incoming message
+        self.x_opt1[0] = msg.orientation.x
+        self.x_opt1[1] = msg.orientation.y
+        self.x_opt1[2] = msg.orientation.z
+        self.x_opt1[3] = msg.position.x
+        self.x_opt1[4] = msg.position.y
+        self.x_opt1[5] = msg.position.z
+        self.x_opt1[6] = msg.angular_velocity.x
+        self.x_opt1[7] = msg.angular_velocity.y
+        self.x_opt1[8] = msg.angular_velocity.z
+        self.x_opt1[9] = msg.linear_velocity.x
+        self.x_opt1[10] = msg.linear_velocity.y
+        self.x_opt1[11] = msg.linear_velocity.z
+        self.x_opt1[12] = msg.gravity
+
+        # Get the optimal GRF from contact point
+        for i, contact_point in enumerate(msg.contacts):
+            self.u_opt0[i * 3: i * 3 + 3] = [contact_point.force.x, contact_point.force.y, contact_point.force.z]
+
     def permute_muj_to_xbi(self, xbi_qpos):
         """Convert mujoco qpos to xbi qpos."""
         # Place the 4th element at the 7th position
@@ -196,8 +194,8 @@ class G1MujocoSimulation:
         # Create a publisher for the SRBD state        
         pub_srbd = rospy.Publisher("/srbd_current", SRBD_state, queue_size=10)
 
-        # Create a subscriber for the MPC solution
-        sub_mpc = rospy.Subscriber("/mpc_solution", SRBD_state, callback_mpc_solution)
+        # Create a subscriber for the MPC solution - fixed by using the class method
+        sub_mpc = rospy.Subscriber("/mpc_solution", SRBD_state, self.callback_mpc_solution)
 
         while self.running and not rospy.is_shutdown() and self.viewer.is_alive:
             # Get real time elapsed since last step
