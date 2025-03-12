@@ -28,6 +28,5 @@ catkin_install_python(PROGRAMS
 install(DIRECTORY 
   src/ 
   launch/
-  config/
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
