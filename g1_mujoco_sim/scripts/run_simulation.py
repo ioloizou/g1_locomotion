@@ -48,6 +48,10 @@ class G1MujocoSimulation:
         # Running flag
         self.running = True
 
+        # Setup the whole body ID
+        self.WBID = WholeBodyID(self.urdf, self.sim_timestep, q_init)
+        self.WBID.setupProblem()
+
     def permute_muj_to_xbi(self, xbi_qpos):
         """Convert mujoco qpos to xbi qpos."""
         # Place the 4th element at the 7th position
@@ -59,9 +63,9 @@ class G1MujocoSimulation:
     def sim_step(self):
         """Perform a single simulation step."""
         tic()
-        ddq, forces = WBID.stepProblem(self.permute_muj_to_xbi(self.data.qpos), self.data.qvel, self.sim_time)
+        ddq, forces = self.WBID.stepProblem(self.permute_muj_to_xbi(self.data.qpos), self.data.qvel, self.sim_time)
 
-        tau = WBID.getInverseDynamics()
+        tau = self.WBID.getInverseDynamics()
 
         # Exclude floating base
         self.data.ctrl = tau[6:]
@@ -79,40 +83,29 @@ class G1MujocoSimulation:
         self.sim_time = 0.0
         self.pass_count = 0
 
-        try:
-            while self.running and not rospy.is_shutdown() and self.viewer.is_alive:
-                # Get real time elapsed since last step
-                current_time = time.time()
-                elapsed_wall_time = current_time - prev_time
-                prev_time = current_time
+        while self.running and not rospy.is_shutdown() and self.viewer.is_alive:
+            # Get real time elapsed since last step
+            current_time = time.time()
+            elapsed_wall_time = current_time - prev_time
+            prev_time = current_time
 
-                # Compute simulation time to advance (applying real-time factor)
-                sim_time_to_advance = elapsed_wall_time * self.real_time_factor
+            # Compute simulation time to advance (applying real-time factor)
+            sim_time_to_advance = elapsed_wall_time * self.real_time_factor
 
-                # Calculate steps needed
-                steps = max(1, int(sim_time_to_advance / self.sim_timestep))
+            # Calculate steps needed
+            steps = max(1, int(sim_time_to_advance / self.sim_timestep))
 
-                # Step the simulation
-                for _ in range(steps):
-                    self.sim_step()
-                    self.sim_time += self.sim_timestep
+            # Step the simulation
+            for _ in range(steps):
+                self.sim_step()
+                self.sim_time += self.sim_timestep
 
-                # Render the current state
-                self.viewer.render()
-
-        except Exception as e:
-            rospy.logerr(f"Simulation error: {e}")
-        finally:
-            if self.viewer:
-                self.viewer.close()
-
+            # Render the current state
+            self.viewer.render()
 
 if __name__ == "__main__":
     # Setup the simulation
     sim = G1MujocoSimulation(q_init)
-    # Setup the whole body ID
-    WBID = WholeBodyID(sim.urdf, sim.sim_timestep, q_init)
-    WBID.setupProblem()
     
     # Run the simulation     
     sim.run()
