@@ -93,7 +93,7 @@ class G1MujocoSimulation:
         self.data.qpos = self.permute_muj_to_xbi(q_init)
         
         # Set mujoco timestep
-        self.model.opt.timestep = 0.003  # Set the simulation timestep
+        self.model.opt.timestep = 0.004  # Set the simulation timestep
         # Real-time settings
         self.sim_timestep = self.model.opt.timestep
         # print(self.sim_timestep)
