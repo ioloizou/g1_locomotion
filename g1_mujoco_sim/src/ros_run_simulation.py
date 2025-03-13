@@ -59,8 +59,6 @@ def publish_current_state(pub_srbd,
 
         srbd_state_msg.contacts.append(contact_point_msg)
     
-    # Debug print to verify what we're publishing
-    rospy.logdebug(f"Publishing SRBD state: pos={com_position_curr}, ori={base_orientation_curr}")
     
     pub_srbd.publish(srbd_state_msg)
 
@@ -93,10 +91,14 @@ class G1MujocoSimulation:
 
         # Set initial joint configuration
         self.data.qpos = self.permute_muj_to_xbi(q_init)
-
+        
+        # Set mujoco timestep
+        self.model.opt.timestep = 0.003  # Set the simulation timestep
         # Real-time settings
         self.sim_timestep = self.model.opt.timestep
-        self.real_time_factor = 0.01  # 1.0 = real time
+        # print(self.sim_timestep)
+        # exit()
+        self.real_time_factor = 0.5  # 1.0 = real time
 
         # Create viewer
         self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
@@ -164,13 +166,22 @@ class G1MujocoSimulation:
         self.data.ctrl = tau[6:]
 
         self.pass_count += 1
-        if self.pass_count >= 1:
+        if self.pass_count >= 10000:
             exit()
 
         mujoco.mj_step(self.model, self.data)
+        
 
+        # To not get CoM from Mujoco
+        WBID.updateModel(self.permute_muj_to_xbi(self.data.qpos), self.data.qvel)
+        
+        #### Maybe another way to get the CoM
+        # com_position_curr = data.comPos
+        # com_linear_velocity_curr = data.comVel 
+        
         # Publish the current state
         permuted_qpos = self.permute_muj_to_xbi(self.data.qpos)
+        # Maybe I need the torso orientation not the floating base
         base_orientation_curr = tf.transformations.euler_from_quaternion(permuted_qpos[3:7])
         com_position_curr = WBID.model.getCOM()
         base_angular_velocity_curr = self.data.qvel[3:6]
