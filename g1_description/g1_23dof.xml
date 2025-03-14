@@ -1,6 +1,8 @@
 <mujoco model="g1_23dof">
   <compiler angle="radian" meshdir="meshes"/>
 
+  <option timestep="0.0001" iterations="50" tolerance="1e-10" solver="Newton" jacobian="dense" cone="pyramidal" />
+
   <asset>
     <mesh name="pelvis" file="pelvis.STL"/>
     <mesh name="pelvis_contour_link" file="pelvis_contour_link.STL"/>
