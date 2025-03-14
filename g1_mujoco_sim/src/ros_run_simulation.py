@@ -171,7 +171,7 @@ class G1MujocoSimulation:
 
         WBID.updateModel(permuted_qpos, joints_velocity_local)
         WBID.stack.update()
-        WBID.setReference(self.sim_time, self.x_opt1[3:6], self.u_opt0)
+        WBID.setReference(self.sim_time, self.x_opt1, self.u_opt0)
         WBID.solveQP()
 
         
@@ -187,7 +187,6 @@ class G1MujocoSimulation:
 
         mujoco.mj_step(self.model, self.data)
         
-
         # To not get CoM from Mujoco
         permuted_qpos = self.permute_muj_to_xbi(self.data.qpos)
         quat = permuted_qpos[3:7]

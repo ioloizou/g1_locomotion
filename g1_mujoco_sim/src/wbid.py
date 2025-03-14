@@ -6,6 +6,7 @@ from pyopensot.tasks.acceleration import CoM, Cartesian, Postural, AngularMoment
 from pyopensot.constraints.acceleration import JointLimits, VelocityLimits
 from pyopensot.constraints.force import FrictionCone
 import pyopensot as pysot
+import tf.transformations as tf_trans
 from ttictoc import tic, toc
 
 def MinimizeVariable(name, opt_var): 
@@ -101,15 +102,15 @@ class WholeBodyID:
         self.com0 = self.com_ref.copy()
 
         # Set the whole Cartesian task but later only orientation will be used
-        base = Cartesian(
+        self.base = Cartesian(
             "base", self.model, "world", "pelvis", self.variables.getVariable("qddot")
         )
         base_gain = 1.
         base_Kp = np.diag([1., 1., 1., 10., 10., 20.]) * base_gain
-        base.setKp(base_Kp)
+        self.base.setKp(base_Kp)
         base_Kd = np.diag([1., 1., 1., 50., 50., 50.]) * base_gain
-        base.setKd(base_Kd)
-        base.setLambda(1.0, 1.0)
+        self.base.setKd(base_Kd)
+        self.base.setLambda(1.0, 1.0)
 
         # Set the contact task
         contact_tasks = list()
@@ -127,7 +128,7 @@ class WholeBodyID:
                     self.variables.getVariable("qddot"),
                 )
             )
-        posture_gain = 10.
+        posture_gain = 50.
         posture = Postural(self.model, self.variables.getVariable("qddot"))
         posture_Kp = np.eye(self.model.nv) * 2. * posture_gain
         posture.setKp(posture_Kp)
@@ -146,8 +147,8 @@ class WholeBodyID:
         # Regularization of acceleration
         req_qddot = MinimizeVariable("acceleration", self.variables.getVariable("qddot"))
 
-        # For the base task taking only the orientation part
-        self.stack = 1.0*self.com + 1.0*(base%[3, 4, 5]) + 0.02*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]) + 0.3*angular_momentum + 0.005*req_qddot
+        # For the self.base task taking only the orientation part
+        self.stack = 1.0*self.com + 1.0*(self.base%[3, 4, 5]) + 0.02*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]) + 0.3*angular_momentum + 0.005*req_qddot
 
         for i in range(len(cartesian_contact_task_frames)):
             self.stack = self.stack + 10.0 * (contact_tasks[i])
@@ -201,8 +202,8 @@ class WholeBodyID:
         self.model.setJointVelocity(dq)
         self.model.update()
 
-    def setReference(self, t, com_opt1=None, u_opt0=None):
-        if com_opt1 is None:
+    def setReference(self, t, x_opt1=None, u_opt0=None):
+        if x_opt1 is None:
             alpha = 0.04
             self.com_ref[0] = self.com0[0] 
             self.com_ref[1] = self.com0[1] #+ alpha * np.sin(3.1415 * t) 
@@ -212,7 +213,24 @@ class WholeBodyID:
             print("self.com_ref", self.com_ref)
             self.com.setReference(self.com_ref)
         else:
-            self.com.setReference(com_opt1)
+            # The base reference is the first 6 elements of x_opt1 but the orientation is only used
+            # for the base task
+
+            # # x_opt1[0:3] contains roll, pitch, yaw for the base orientation.
+            roll, pitch, yaw = x_opt1[0:3]
+            R = tf_trans.euler_matrix(roll, pitch, yaw)[0:3, 0:3]
+
+            # # Get current full homogeneous transformation.
+            base_affine = self.base.getReference() 
+            # print(type(base_affine[0]))
+            # exit()
+            # # Update only the rotation part.
+            base_affine[0].linear = R
+
+            # # Pass the updated homogeneous transformation.
+            self.base.setReference(base_affine[0])
+            # CoM position, CoM velocity, CoM acceleration references 
+            self.com.setReference(x_opt1[3:6], x_opt1[9:12])
 
         for i in range(len(self.contact_frames)):
             setDesiredForce(self.wrench_tasks[i], u_opt0[i*3:i*3+3], self.variables.getVariable(self.contact_frames[i]))
