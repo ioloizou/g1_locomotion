@@ -93,11 +93,10 @@ class G1MujocoSimulation:
         self.data.qpos = self.permute_muj_to_xbi(q_init)
         
         # Set mujoco timestep
-        self.model.opt.timestep = 0.004  # Set the simulation timestep
+        self.model.opt.timestep = 0.003  # Set the simulation timestep
         # Real-time settings
         self.sim_timestep = self.model.opt.timestep
-        # print(self.sim_timestep)
-        # exit()
+
         self.real_time_factor = 0.5  # 1.0 = real time
 
         # Create viewer
@@ -111,6 +110,8 @@ class G1MujocoSimulation:
         Subscribe to the MPC solution and update the reference trajectory.
         """
         # Unpack the MPC solution from the incoming message
+        
+        # Everything is in world frame
         self.x_opt1[0] = msg.orientation.x
         self.x_opt1[1] = msg.orientation.y
         self.x_opt1[2] = msg.orientation.z
@@ -144,7 +145,7 @@ class G1MujocoSimulation:
         
         tic()
 
-        # Current foot heel and toe positions
+        # Current foot heel and toe positions in world frame
         left_heel = WBID.model.getPose("left_foot_line_contact_lower").translation
         left_toe = WBID.model.getPose("left_foot_line_contact_upper").translation
         
@@ -153,9 +154,24 @@ class G1MujocoSimulation:
 
         foot_positions_curr = np.array([left_heel, left_toe, right_heel, right_toe])
 
-        WBID.updateModel(self.permute_muj_to_xbi(self.data.qpos), self.data.qvel)
+        # Floating base: 
+        # Xbot/Pinocchio - Position: World frame            Mujoco - Position: World frame
+        # Xbot/Pinocchio - Orientation: World frame         Mujoco - Orientation: World frame    
+        # Xbot/Pinocchio - Linear Velocity: Local frame     Mujoco - Linear Velocity: World frame
+        # Xbot/Pinocchio - Angular Velocity: Local frame    Mujoco - Angular Velocity: Local frame
+
+        # Transform the mujoco linear velocity to the xbot linear velocity
+        # World to Local | Note: linear is the rotation matrix
+        
+        permuted_qpos = self.permute_muj_to_xbi(self.data.qpos)
+        quat = permuted_qpos[3:7]
+        w_Rot_b = tf.transformations.quaternion_matrix(quat)[0:3, 0:3]
+        base_linear_velocity_local = w_Rot_b.T @ self.data.qvel[0:3]
+        joints_velocity_local = np.concatenate([base_linear_velocity_local, self.data.qvel[3:]])
+
+        WBID.updateModel(permuted_qpos, joints_velocity_local)
         WBID.stack.update()
-        WBID.setReference(self.sim_time , self.x_opt1[3:6], self.u_opt0)
+        WBID.setReference(self.sim_time, self.x_opt1[3:6], self.u_opt0)
         WBID.solveQP()
 
         
@@ -165,15 +181,20 @@ class G1MujocoSimulation:
         # Exclude floating base
         self.data.ctrl = tau[6:]
 
-        self.pass_count += 1
-        if self.pass_count >= 10000:
-            exit()
+        # self.pass_count += 1
+        # if self.pass_count >= 10000:
+        #     exit()
 
         mujoco.mj_step(self.model, self.data)
         
 
         # To not get CoM from Mujoco
-        WBID.updateModel(self.permute_muj_to_xbi(self.data.qpos), self.data.qvel)
+        permuted_qpos = self.permute_muj_to_xbi(self.data.qpos)
+        quat = permuted_qpos[3:7]
+        w_Rot_b = tf.transformations.quaternion_matrix(quat)[0:3, 0:3]
+        base_linear_velocity_local = w_Rot_b.T @ self.data.qvel[0:3]
+        joints_velocity_local = np.concatenate([base_linear_velocity_local, self.data.qvel[3:]])
+        WBID.updateModel(permuted_qpos, joints_velocity_local)
         
         #### Maybe another way to get the CoM
         # com_position_curr = data.comPos
@@ -182,10 +203,15 @@ class G1MujocoSimulation:
         # Publish the current state
         permuted_qpos = self.permute_muj_to_xbi(self.data.qpos)
         # Maybe I need the torso orientation not the floating base
+        
+        # World Frame
         base_orientation_curr = tf.transformations.euler_from_quaternion(permuted_qpos[3:7])
+        # World Frame
         com_position_curr = WBID.model.getCOM()
-        base_angular_velocity_curr = self.data.qvel[3:6]
-        com_linear_velocity_curr =  WBID.model.getCOMJacobian() @ self.data.qvel
+        # Local Frame -> World Frame
+        base_angular_velocity_curr = w_Rot_b @ self.data.qvel[3:6]
+        # Local Frame -> World Frame
+        com_linear_velocity_curr =  w_Rot_b @ WBID.model.getCOMJacobian() @ joints_velocity_local
         
         publish_current_state(pub_srbd,
                               srbd_state_msg,
