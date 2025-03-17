@@ -8,6 +8,7 @@ from pyopensot.constraints.acceleration import JointLimits, VelocityLimits
 from pyopensot.constraints.force import FrictionCone, WrenchLimits
 import pyopensot as pysot
 from ttictoc import tic, toc
+from pyopensot.tasks import MinimizeVariable
 
 import rospy
 import tf
@@ -16,16 +17,6 @@ from geometry_msgs.msg import TransformStamped, WrenchStamped
 from pyopensot import solver_back_ends
 
 from matplotlib import pyplot as plt
-
-
-def min_forces_task(model):
-    A = np.zeros((2*6, model.nv + 2*6))
-    b = np.zeros(2*6)
-
-    A[:, model.nv:] = np.eye(2*6)
-    return GenericTask("min_forces", A, b)
-
-
 
 class WholeBodyID:
     def __init__(self, urdf, dt, q_init, friction_coef=1.):
@@ -84,13 +75,13 @@ class WholeBodyID:
             "right_foot_point_contact",
         ]
 
-        self.contact_frames = cartesian_contact_task_frames
+        #self.contact_frames = cartesian_contact_task_frames
 
         # Hands may be added in the future
-        #self.contact_frames = line_foot_contact_frames
+        self.contact_frames = line_foot_contact_frames
 
         for contact_frame in self.contact_frames:
-            variables_vec[contact_frame] = 6
+            variables_vec[contact_frame] = 3
         self.variables = pysot.OptvarHelper(variables_vec)
 
         # Set CoM tracking task
@@ -120,7 +111,8 @@ class WholeBodyID:
                 )
             )
 
-        """self.wrench_limits = list()
+        self.wrench_limits = list()
+        self.minforce = list()
         for contact_frame in line_foot_contact_frames:
             self.wrench_limits.append(
                 WrenchLimits(
@@ -128,7 +120,8 @@ class WholeBodyID:
                     np.array([-1000., -1000., -1000.]),
                     np.array([1000., 1000., 1000.]),
                     self.variables.getVariable(contact_frame))
-            )"""
+            )
+            self.minforce.append(MinimizeVariable("min_"+contact_frame, self.variables.getVariable(contact_frame)))
 
         posture = Postural(self.model, self.variables.getVariable("qddot"))
 
@@ -138,11 +131,11 @@ class WholeBodyID:
         )
 
         # For the base task taking only the orientation part
-        self.stack = 1. * self.com + 1. * (base % [3, 4, 5]) + 1. * posture % list(range(18, self.model.nv)) + 1e-6 * min_forces_task(self.model)
+        self.stack = 1. * self.com + 1. * (base % [3, 4, 5]) + 1. * posture % list(range(18, self.model.nv))  + 0.01 * angular_momentum
         for i in range(len(cartesian_contact_task_frames)):
-            self.stack = self.stack + 1.0 * (self.contact_tasks[i])
-
-        #self.stack = self.stack / posture
+            self.stack = self.stack + 1. * (self.contact_tasks[i])
+        for i in range(len(line_foot_contact_frames)):
+            self.stack = self.stack + 1e-4 * self.minforce[i]
 
         force_variables = list()
         for i in range(len(self.contact_frames)):
@@ -156,11 +149,11 @@ class WholeBodyID:
         #posture.setLambda(300.0, 20.0)
         #angular_momentum.setLambda(100.0)
 
-        self.com.setLambda(250.0, 10.)
-        base.setLambda(250.0, 10.)
+        self.com.setLambda(400.0, 10.)
+        base.setLambda(10.0, 10.)
         for contact_task in self.contact_tasks:
-            contact_task.setLambda(250.0, 10.)
-        posture.setLambda(100.0, 10.)
+            contact_task.setLambda(10.0, 30.)
+        posture.setLambda(200.0, 10.)
         angular_momentum.setLambda(0.0)
 
         # Creates the stack.
@@ -198,10 +191,10 @@ class WholeBodyID:
                 self.variables.getVariable(self.contact_frames[i]),
                 self.model,
                 mu,
-            )# << self.wrench_limits[i]
+            ) << self.wrench_limits[i]
 
         # Creates the solver
-        self.solver = pysot.iHQP(self.stack, eps_regularisation=1e-36) #, be_solver=solver_back_ends.eiQuadProg)
+        self.solver = pysot.iHQP(self.stack, eps_regularisation=1) #, be_solver=solver_back_ends.eiQuadProg)
         #self.solver = pysot.nHQP(self.stack.getStack(), self.stack.getBounds(), 1e-6)
 
     def updateModel(self, q, dq):
@@ -256,5 +249,5 @@ class WholeBodyID:
         tau = self.model.computeInverseDynamics()
         for i in range(len(self.contact_frames)):
             Jc = self.model.getJacobian(self.contact_frames[i])
-            tau = tau - Jc[:6, :].T @ np.array(self.contact_forces[i])
+            tau = tau - Jc[:3, :].T @ np.array(self.contact_forces[i])
         return tau

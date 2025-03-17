@@ -100,7 +100,7 @@ class G1MujocoSimulation:
 
         if self.step_counter % 5 == 0:
             self.sol_dict = self.lip_mpc.get_solution(state=None, visualize=True)
-            self.lip_state = self.sol_dict["state0"]
+            self.lip_state = self.sol_dict["state"]
 
         # Integrate the mpc solution
         node = 0
@@ -110,37 +110,53 @@ class G1MujocoSimulation:
                 param_values_at_node.append(i_param[node])
         p = cs.vcat(param_values_at_node)
 
-        self.lip_state = np.array(cs.DM(self.lip_mpc.simulation_euler_integrator(self.lip_state, self.sol_dict["input"], p)))
+        #self.lip_state = np.array(cs.DM(self.lip_mpc.simulation_euler_integrator(self.lip_state, self.sol_dict["input"], p)))
 
         # Send CoM reference to WBID
-        A = 0.03
-        fr = 1. * 2 * np.pi
-        com_ref = self.initial_com_pos + np.array([0.0, A * np.sin(fr * self.sim_time), 0.0])
-        com_vel_ref = np.array([0.0,            fr    * A * np.cos(fr * self.sim_time), 0.0])
-        com_acc_ref = np.array([0.0,          - fr**2 * A * np.sin(fr * self.sim_time), 0.0])
-        self.WBID.com.setReference(com_ref, com_vel_ref, com_acc_ref)
+        #A = 0.03
+        #fr = 0.5 * 2 * np.pi
+        #com_ref = self.initial_com_pos + np.array([0.0, A * np.sin(fr * self.sim_time), 0.0])
+        #com_vel_ref = np.array([0.0,            fr    * A * np.cos(fr * self.sim_time), 0.0])
+        #com_acc_ref = np.array([0.0,          - fr**2 * A * np.sin(fr * self.sim_time), 0.0])
+        #self.WBID.com.setReference(com_ref, com_vel_ref, com_acc_ref)
         
-        #self.WBID.com.setReference(self.lip_state[0:3], self.lip_state[15:18], self.sol_dict["rddot0"])
-        
-        """# Set foot references
-        i = 0
-        for contact_task in self.WBID.contact_tasks:
-            contact_task_reference_pose, contact_task_reference_vel, contact_task_reference_acc = contact_task.getReference()
-            contact_task_reference_pose.translation = 0.5 * \
-                (self.lip_state[3 + 6*i : 6 + 6*i] + \
-                 self.lip_state[6 + 6*i : 9 + 6*i])
-            contact_task_reference_vel[0:3] = (0.5 * (self.lip_state[18 + 6*i : 21 + 6*i] + self.lip_state[21 + 6*i : 24 + 6*i])).flatten()
-            contact_task_reference_acc[0:3] = (0.5 * (self.sol_dict["input"][3 + 6*i : 6 + 6*i] + self.sol_dict["input"][6 + 6*i : 9 + 6*i])).flatten()
-            
-            contact_task.setReference(contact_task_reference_pose, contact_task_reference_vel, contact_task_reference_acc)
-            if self.sol_dict["cdot_switch"][i * 2].getValues()[0][0] == 1:
-                self.WBID.wrench_limits[2*i].releaseContact(False)
-                self.WBID.wrench_limits[2*i+1].releaseContact(False)
-            else:
-                self.WBID.wrench_limits[2*i].releaseContact(True)
-                self.WBID.wrench_limits[2*i+1].releaseContact(True)
+        self.WBID.com.setReference(self.lip_state[0:3], self.lip_state[15:18], self.sol_dict["rddot0"])
 
-            i = i + 1 """
+        # Set foot references
+        # i = 0
+        # for contact_task in self.WBID.contact_tasks:
+        #     contact_task_reference_pose, contact_task_reference_vel, contact_task_reference_acc = contact_task.getReference()
+        #     contact_task_reference_pose.translation = 0.5 * (self.lip_state[3 + 6*i : 6 + 6*i] + self.lip_state[6 + 6*i : 9 + 6*i])
+        #     contact_task_reference_vel[0:3] = (0.5 * (self.lip_state[18 + 6*i : 21 + 6*i] + self.lip_state[21 + 6*i : 24 + 6*i])).flatten()
+        #     contact_task_reference_acc[0:3] = (0.5 * (self.sol_dict["input"][3 + 6*i : 6 + 6*i] + self.sol_dict["input"][6 + 6*i : 9 + 6*i])).flatten()
+        #
+        #     contact_task.setReference(contact_task_reference_pose, contact_task_reference_vel, contact_task_reference_acc)
+        #     lower, upper = self.WBID.wrench_limits[2 * i].getWrenchLimits()
+        #     if self.sol_dict["cdot_switch"][i * 2].getValues()[0][0] == 1:
+        #         if upper[0] < 1000.:
+        #             upper += 25.
+        #             lower -= 25.
+        #         self.WBID.wrench_limits[2 * i].setWrenchLimits(lower, upper)
+        #         self.WBID.wrench_limits[2 * i + 1].setWrenchLimits(lower, upper)
+        #
+        #         #self.WBID.wrench_limits[2*i].releaseContact(False)
+        #         #self.WBID.wrench_limits[2*i+1].releaseContact(False)
+        #         for contact_task in self.WBID.contact_tasks:
+        #             contact_task.setLambda(10.0, 30.)
+        #     else:
+        #         if upper[0] > 0.:
+        #             upper -= 25.
+        #             lower += 25.
+        #         self.WBID.wrench_limits[2 * i].setWrenchLimits(lower, upper)
+        #         self.WBID.wrench_limits[2 * i + 1].setWrenchLimits(lower, upper)
+        #
+        #
+        #         #self.WBID.wrench_limits[2*i].releaseContact(True)
+        #         #self.WBID.wrench_limits[2*i+1].releaseContact(True)
+        #         for contact_task in self.WBID.contact_tasks:
+        #             contact_task.setLambda(50.0, 1.)
+        #
+        #     i = i + 1
 
         # Copmute inverse dynamics
         ddq, forces = self.WBID.stepProblem(self.permute_muj_to_xbi(self.data.qpos), self.data.qvel, self.sim_time)
