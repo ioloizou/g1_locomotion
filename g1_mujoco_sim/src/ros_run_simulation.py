@@ -148,7 +148,6 @@ class G1MujocoSimulation:
         # Current foot heel and toe positions in world frame
         left_heel = WBID.model.getPose("left_foot_line_contact_lower").translation
         left_toe = WBID.model.getPose("left_foot_line_contact_upper").translation
-        
         right_heel = WBID.model.getPose("right_foot_line_contact_lower").translation
         right_toe = WBID.model.getPose("right_foot_line_contact_upper").translation
 
@@ -172,6 +171,7 @@ class G1MujocoSimulation:
         WBID.updateModel(permuted_qpos, joints_velocity_local)
         WBID.stack.update()
         WBID.setReference(self.sim_time, self.x_opt1, self.u_opt0)
+        # WBID.setReference(self.sim_time)
         WBID.solveQP()
 
         
@@ -187,7 +187,6 @@ class G1MujocoSimulation:
 
         mujoco.mj_step(self.model, self.data)
         
-        # To not get CoM from Mujoco
         permuted_qpos = self.permute_muj_to_xbi(self.data.qpos)
         quat = permuted_qpos[3:7]
         w_Rot_b = tf.transformations.quaternion_matrix(quat)[0:3, 0:3]
@@ -204,11 +203,11 @@ class G1MujocoSimulation:
         # Maybe I need the torso orientation not the floating base
         
         # World Frame
-        base_orientation_curr = tf.transformations.euler_from_quaternion(permuted_qpos[3:7])
+        base_orientation_curr = tf.transformations.euler_from_matrix(w_Rot_b @ WBID.model.getPose("torso_link").linear)
         # World Frame
         com_position_curr = WBID.model.getCOM()
         # Local Frame -> World Frame
-        base_angular_velocity_curr = w_Rot_b @ self.data.qvel[3:6]
+        base_angular_velocity_curr = w_Rot_b @ WBID.model.getVelocityTwist("torso_link")[3:6]
         # Local Frame -> World Frame
         com_linear_velocity_curr =  w_Rot_b @ WBID.model.getCOMJacobian() @ joints_velocity_local
         
@@ -249,7 +248,6 @@ class G1MujocoSimulation:
 
             # Calculate steps needed
             steps = max(1, int(sim_time_to_advance / self.sim_timestep))
-
             # Step the simulation
             for _ in range(steps):
                 self.sim_step(pub_srbd, srbd_state_msg, contact_point_msg)
@@ -268,7 +266,6 @@ if __name__ == "__main__":
         # Setup the whole body ID
         WBID = WholeBodyID(sim.urdf, sim.sim_timestep, q_init)
         WBID.setupProblem()
-        
         # Run the simulation     
         sim.run()
     

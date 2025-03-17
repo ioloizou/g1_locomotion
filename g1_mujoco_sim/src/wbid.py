@@ -51,7 +51,7 @@ def setDesiredForce(Wrench_task, wrench_desired, wrench):
 	Wrench_task.setb(b)
 
 class WholeBodyID:
-    def __init__(self, urdf, dt, q_init, friction_coef=0.8):
+    def __init__(self, urdf, dt, q_init, friction_coef=0.3):
         self.dt = dt
         self.friction_coef = friction_coef
         self.model = xbi.ModelInterface2(urdf)
@@ -128,7 +128,7 @@ class WholeBodyID:
                     self.variables.getVariable("qddot"),
                 )
             )
-        posture_gain = 50.
+        posture_gain = 40.
         posture = Postural(self.model, self.variables.getVariable("qddot"))
         posture_Kp = np.eye(self.model.nv) * 2. * posture_gain
         posture.setKp(posture_Kp)
@@ -144,24 +144,33 @@ class WholeBodyID:
         angular_momentum.setMomentumGain(angular_momentum_Kd)
         angular_momentum.setLambda(1.)
 
+        force_variables = list()
+        for i in range(len(self.contact_frames)):
+            force_variables.append(self.variables.getVariable(self.contact_frames[i]))
+        
         # Regularization of acceleration
         req_qddot = MinimizeVariable("acceleration", self.variables.getVariable("qddot"))
 
+        # # Regularization of forces
+        # req_forces_0 = MinimizeVariable("min_forces", self.variables.getVariable(self.contact_frames[0]))
+        # req_forces_1 = MinimizeVariable("min_forces", self.variables.getVariable(self.contact_frames[1]))
+        # req_forces_2 = MinimizeVariable("min_forces", self.variables.getVariable(self.contact_frames[2]))
+        # req_forces_3 = MinimizeVariable("min_forces", self.variables.getVariable(self.contact_frames[3]))
+
+        min_force_weight = 1e-2
         # For the self.base task taking only the orientation part
-        self.stack = 1.0*self.com + 1.0*(self.base%[3, 4, 5]) + 0.02*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]) + 0.3*angular_momentum + 0.005*req_qddot
+        self.stack = 1.0*self.com + 0.02*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]) + 0.3*angular_momentum + 0.005*req_qddot 
+        # + min_force_weight*req_forces_0 + min_force_weight*req_forces_1 + min_force_weight*req_forces_2 + min_force_weight*req_forces_3
 
         for i in range(len(cartesian_contact_task_frames)):
-            self.stack = self.stack + 10.0 * (contact_tasks[i])
+            self.stack = self.stack + 11.0 * (contact_tasks[i])
 
         # Task for factual - fdesired
         self.wrench_tasks = list()
         for contact_frame in self.contact_frames:
             self.wrench_tasks.append(Wrench(contact_frame, contact_frame, "pelvis", self.variables.getVariable(contact_frame)))
-            self.stack = self.stack + 0.01*(self.wrench_tasks[-1])
+            self.stack = self.stack + 0.1*(self.wrench_tasks[-1])
         
-        force_variables = list()
-        for i in range(len(self.contact_frames)):
-            force_variables.append(self.variables.getVariable(self.contact_frames[i]))
 
         # Creates the stack.
         # Notice:  we do not need to keep track of the DynamicFeasibility constraint so it is created when added into the stack.
@@ -216,24 +225,33 @@ class WholeBodyID:
             # The base reference is the first 6 elements of x_opt1 but the orientation is only used
             # for the base task
 
-            # # x_opt1[0:3] contains roll, pitch, yaw for the base orientation.
-            roll, pitch, yaw = x_opt1[0:3]
-            R = tf_trans.euler_matrix(roll, pitch, yaw)[0:3, 0:3]
+            # x_opt1[0:3] contains roll, pitch, yaw for the torso orientation.
+            # roll, pitch, yaw = x_opt1[0:3]
+            # R = tf_trans.euler_matrix(roll, pitch, yaw)[0:3, 0:3]
 
             # # Get current full homogeneous transformation.
-            base_affine = self.base.getReference() 
-            # print(type(base_affine[0]))
-            # exit()
+            # base_affine = self.base.getReference() 
+
             # # Update only the rotation part.
-            base_affine[0].linear = R
+            # base_affine[0].linear = R
 
+            # # Linear and Angular Velocity. Linear drops in the stack
+            # linear_velocity = x_opt1[9:12]
+            # angular_velocity = x_opt1[6:9]
+            # velocity = np.hstack((linear_velocity, angular_velocity))
+            
             # # Pass the updated homogeneous transformation.
-            self.base.setReference(base_affine[0])
+            # self.base.setReference(base_affine[0], velocity)
             # CoM position, CoM velocity, CoM acceleration references 
-            self.com.setReference(x_opt1[3:6], x_opt1[9:12])
+            
+            # Calculate from MPC result
+            gravity = np.array([0, 0, -9.80665])
+            # acceleration_reference = np.sum(u_opt0, axis=0)/self.model.getMass() + gravity
+            acceleration_reference = np.zeros(3)
+            self.com.setReference(x_opt1[3:6], x_opt1[9:12], acceleration_reference)
 
-        for i in range(len(self.contact_frames)):
-            setDesiredForce(self.wrench_tasks[i], u_opt0[i*3:i*3+3], self.variables.getVariable(self.contact_frames[i]))
+            for i in range(len(self.contact_frames)):
+                setDesiredForce(self.wrench_tasks[i], u_opt0[i*3:i*3+3], self.variables.getVariable(self.contact_frames[i]))
 
     def solveQP(self):
         self.x = self.solver.solve()
