@@ -8,6 +8,7 @@ import rospy
 import tf
 import numpy as np
 from ttictoc import tic, toc
+from pal_statistics import StatisticsRegistry
 
 from g1_msgs.msg import SRBD_state, ContactPoint
 
@@ -21,7 +22,8 @@ def publish_current_state(pub_srbd,
                           com_position_curr, 
                           base_angular_velocity_curr, 
                           com_linear_velocity_curr,
-                          foot_positions_curr 
+                          foot_positions_curr,
+                          qp_forces
                           ):
     """
     Publish the current state of the robot to the ROS topic.
@@ -56,6 +58,10 @@ def publish_current_state(pub_srbd,
         contact_point_msg.position.x = foot_positions_curr[i, 0]
         contact_point_msg.position.y = foot_positions_curr[i, 1]
         contact_point_msg.position.z = foot_positions_curr[i, 2]
+        qp_forces = np.array(qp_forces).reshape(-1).copy()
+        contact_point_msg.force.x = qp_forces[i * 3]
+        contact_point_msg.force.y = qp_forces[i * 3 + 1]
+        contact_point_msg.force.z = qp_forces[i * 3 + 2]
 
         srbd_state_msg.contacts.append(contact_point_msg)
     
@@ -75,13 +81,14 @@ class G1MujocoSimulation:
         rospy.init_node("g1_mujoco_sim", anonymous=True)
 
         self.x_opt1 = np.zeros(13)  
-        self.u_opt0 = np.zeros(12)    
+        self.u_opt0 = np.zeros(12)
+        self.contact_states = np.zeros(4)    
 
         # Find the model path
         rospack = rospkg.RosPack()
         pkg_path = rospack.get_path("g1_mujoco_sim")
         model_path = os.path.join(pkg_path, "..", "g1_description", "g1_23dof.xml")
-
+        
         # Load the URDF for xbot
         self.urdf = loadURDF(pkg_path)
 
@@ -129,7 +136,8 @@ class G1MujocoSimulation:
         # Get the optimal GRF from contact point
         for i, contact_point in enumerate(msg.contacts):
             self.u_opt0[i * 3: i * 3 + 3] = [contact_point.force.x, contact_point.force.y, contact_point.force.z]
-
+            self.contact_states[i] = contact_point.active
+            
         print("u_opt0\n", self.u_opt0)
 
     def permute_muj_to_xbi(self, xbi_qpos):
@@ -162,6 +170,7 @@ class G1MujocoSimulation:
         # Transform the mujoco linear velocity to the xbot linear velocity
         # World to Local | Note: linear is the rotation matrix
         
+
         permuted_qpos = self.permute_muj_to_xbi(self.data.qpos)
         quat = permuted_qpos[3:7]
         w_Rot_b = tf.transformations.quaternion_matrix(quat)[0:3, 0:3]
@@ -169,6 +178,29 @@ class G1MujocoSimulation:
         joints_velocity_local = np.concatenate([base_linear_velocity_local, self.data.qvel[3:]])
 
         WBID.updateModel(permuted_qpos, joints_velocity_local)
+        
+        ###################################
+        #      Contact enable/disable     #
+        ###################################
+        
+        # Map the four contact points to the two contact tasks
+        # Left foot contact task is active if either left foot contact point is active
+        left_foot_active = self.contact_states[0] == 1 or self.contact_states[1] == 1
+        # Right foot contact task is active if either right foot contact point is active
+        right_foot_active = self.contact_states[2] == 1 or self.contact_states[3] == 1
+
+        # Set the contact tasks active state
+        # WBID.contact_tasks[0].setActive(left_foot_active)   # left foot
+        # WBID.contact_tasks[1].setActive(right_foot_active)  # right foot
+        
+        # for i, contact in enumerate(["left_foot_line_contact_lower", "left_foot_line_contact_upper", "right_foot_line_contact_lower", "right_foot_line_contact_upper"]):
+        #     if self.contact_states[i] == 1:
+        #         WBID.dynamics_constraint.enableContact(contact)
+        #     else:
+        #         WBID.dynamics_constraint.disableContact(contact)  # dynamics constraint
+
+        ###################################
+        
         WBID.stack.update()
         WBID.setReference(self.sim_time, self.x_opt1, self.u_opt0)
         # WBID.setReference(self.sim_time)
@@ -176,7 +208,7 @@ class G1MujocoSimulation:
 
         
         tau = WBID.getInverseDynamics()
-        print("toc() ===========================", toc())
+        self.wbid_solve_time = toc()
 
         # Exclude floating base
         self.data.ctrl = tau[6:]
@@ -210,7 +242,8 @@ class G1MujocoSimulation:
         base_angular_velocity_curr = w_Rot_b @ WBID.model.getVelocityTwist("torso_link")[3:6]
         # Local Frame -> World Frame
         com_linear_velocity_curr =  w_Rot_b @ WBID.model.getCOMJacobian() @ joints_velocity_local
-        
+
+        # Get the forces from QP to publish
         publish_current_state(pub_srbd,
                               srbd_state_msg,
                               contact_point_msg,
@@ -218,8 +251,13 @@ class G1MujocoSimulation:
                               com_position_curr,
                               base_angular_velocity_curr,
                               com_linear_velocity_curr,
-                              foot_positions_curr
+                              foot_positions_curr,
+                              WBID.contact_forces
                               )
+
+        # Publish the statistics
+        self.registry.publish()
+
 
     def run(self):
         """Run simple real-time simulation."""
@@ -236,6 +274,11 @@ class G1MujocoSimulation:
 
         # Create a subscriber for the MPC solution - fixed by using the class method
         sub_mpc = rospy.Subscriber("/mpc_solution", SRBD_state, self.callback_mpc_solution)
+
+        # Create Registry for a topic
+        self.registry = StatisticsRegistry("/wbid_statistics")
+        self.wbid_solve_time = 0.0
+        self.registry.registerFunction("wbid_solve_time", (lambda: self.wbid_solve_time))
 
         while self.running and not rospy.is_shutdown() and self.viewer.is_alive:
             # Get real time elapsed since last step

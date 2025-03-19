@@ -113,13 +113,13 @@ class WholeBodyID:
         self.base.setLambda(1.0, 1.0)
 
         # Set the contact task
-        contact_tasks = list()
+        self.contact_tasks = list()
         self.cartesian_contact_task_frames = [
             "left_foot_point_contact",
             "right_foot_point_contact",
         ]
         for cartesian_contact_task_frame in self.cartesian_contact_task_frames:
-            contact_tasks.append(
+            self.contact_tasks.append(
                 Cartesian(
                     cartesian_contact_task_frame,
                     self.model,
@@ -129,7 +129,7 @@ class WholeBodyID:
                 )
             )
 
-        
+
         posture_gain = 40.
         posture = Postural(self.model, self.variables.getVariable("qddot"))
         posture_Kp = np.eye(self.model.nv) * 2. * posture_gain
@@ -165,7 +165,9 @@ class WholeBodyID:
         # + min_force_weight*req_forces_0 + min_force_weight*req_forces_1 + min_force_weight*req_forces_2 + min_force_weight*req_forces_3
 
         for i in range(len(self.cartesian_contact_task_frames)):
-            self.stack = self.stack + 10.0 * (contact_tasks[i])
+            self.contact_tasks[i].setLambda(500.0, 20.)
+            self.stack = self.stack + 10.0 * (self.contact_tasks[i])
+
 
         # Task for factual - fdesired
         self.wrench_tasks = list()
@@ -173,17 +175,18 @@ class WholeBodyID:
             self.wrench_tasks.append(Wrench(contact_frame, contact_frame, "pelvis", self.variables.getVariable(contact_frame)))
             self.stack = self.stack + 0.1*(self.wrench_tasks[-1])
         
-
-        # Creates the stack.
-        # Notice:  we do not need to keep track of the DynamicFeasibility constraint so it is created when added into the stack.
-        # The same can be done with other constraints such as Joint Limits and Velocity Limits
-        self.stack = (pysot.AutoStack(self.stack)) << DynamicFeasibility(
+        self.dynamics_constraint = DynamicFeasibility(
             "floating_base_dynamics",
             self.model,
             self.variables.getVariable("qddot"),
             force_variables,
             self.contact_frames,
         )
+
+        # Creates the stack.
+        # Notice:  we do not need to keep track of the DynamicFeasibility constraint so it is created when added into the stack.
+        # The same can be done with other constraints such as Joint Limits and Velocity Limits
+        self.stack = (pysot.AutoStack(self.stack)) << self.dynamics_constraint
         self.stack = self.stack << JointLimits(
             self.model,
             self.variables.getVariable("qddot"),
@@ -251,15 +254,14 @@ class WholeBodyID:
 
             # The ending vector is 3,1 and all the elements are summed with every third element from that element from u_opt0
             sum_forces = np.sum(np.reshape(u_opt0, (3, 4)), axis=1)
-            # acceleration_reference = sum_forces/self.model.getMass() + gravity
+            acceleration_reference = sum_forces/self.model.getMass() + gravity
 
-            # acceleration_reference = np.sum(u_opt0, axis=0)/self.model.getMass() + gravity
-            acceleration_reference = np.zeros(3)
+            # acceleration_reference = np.zeros(3)
             self.com.setReference(x_opt1[3:6], x_opt1[9:12], acceleration_reference)
 
             for i in range(len(self.contact_frames)):
-                setDesiredForce(self.wrench_tasks[i], u_opt0[i*3:i*3+3], self.variables.getVariable(self.contact_frames[i]))
-
+                setDesiredForce(self.wrench_tasks[i], u_opt0[i*3:i*3+3], self.variables.getVariable(self.contact_frames[i]))            
+         
         
 
 
