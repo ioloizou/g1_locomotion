@@ -1,6 +1,6 @@
 <launch>
   <!-- Launch MPC to WBID node -->
-  <node name="mpc_to_wbid" pkg="g1_mpc" type="mpc_to_wbid.py" output="screen">
+  <node name="mpc_to_wbid" pkg="g1_mpc" type="mpc_to_wbid_node" output="screen">
   </node>
 
   <!-- Launch ROS simulation node -->
