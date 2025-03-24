@@ -104,7 +104,7 @@ class G1MujocoSimulation:
         # Real-time settings
         self.sim_timestep = self.model.opt.timestep
 
-        self.real_time_factor = 0.01  # 1.0 = real time
+        self.real_time_factor = 0.001  # 1.0 = real time
 
         # Create viewer
         self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)

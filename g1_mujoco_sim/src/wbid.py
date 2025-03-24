@@ -41,7 +41,7 @@ def setDesiredForce(Wrench_task, wrench_desired, wrench):
 
 	b = wrench_desired - wrench.getq()
 	
-	print(f"b: {b}")
+	# print(f"b: {b}")
 	
 	# print(f'wrench_desired_dimensions: {wrench_desired.shape}')
 	# print(f'wrench: {wrench}')
