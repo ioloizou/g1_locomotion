@@ -104,8 +104,6 @@ class G1MujocoSimulation:
         # Real-time settings
         self.sim_timestep = self.model.opt.timestep
 
-        self.real_time_factor = 0.0001  # 1.0 = real time
-
         # Create viewer
         self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
 
@@ -282,19 +280,8 @@ class G1MujocoSimulation:
 
         while self.running and not rospy.is_shutdown() and self.viewer.is_alive:
             # Get real time elapsed since last step
-            current_time = time.time()
-            elapsed_wall_time = current_time - prev_time
-            prev_time = current_time
-
-            # Compute simulation time to advance (applying real-time factor)
-            sim_time_to_advance = elapsed_wall_time * self.real_time_factor
-
-            # Calculate steps needed
-            steps = max(1, int(sim_time_to_advance / self.sim_timestep))
-            # Step the simulation
-            for _ in range(steps):
-                self.sim_step(pub_srbd, srbd_state_msg, contact_point_msg)
-                self.sim_time += self.sim_timestep
+            self.sim_step(pub_srbd, srbd_state_msg, contact_point_msg)
+            self.sim_time += self.sim_timestep
 
             # Render the current state
             self.viewer.render()
