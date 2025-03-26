@@ -100,11 +100,11 @@ class G1MujocoSimulation:
         self.data.qpos = self.permute_muj_to_xbi(q_init)
         
         # Set mujoco timestep
-        self.model.opt.timestep = 0.003  # Set the simulation timestep
+        self.model.opt.timestep = 0.001  # Set the simulation timestep
         # Real-time settings
         self.sim_timestep = self.model.opt.timestep
 
-        self.real_time_factor = 0.001  # 1.0 = real time
+        self.real_time_factor = 0.0001  # 1.0 = real time
 
         # Create viewer
         self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
@@ -214,7 +214,7 @@ class G1MujocoSimulation:
         self.data.ctrl = tau[6:]
 
         # self.pass_count += 1
-        # if self.pass_count >= 10000:
+        # if self.pass_count >= 2000:
         #     exit()
 
         mujoco.mj_step(self.model, self.data)
