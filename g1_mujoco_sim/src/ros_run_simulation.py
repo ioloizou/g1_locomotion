@@ -196,6 +196,23 @@ class G1MujocoSimulation:
         #         WBID.dynamics_constraint.enableContact(contact)
         #     else:
         #         WBID.dynamics_constraint.disableContact(contact)  # dynamics constraint
+        ###################################
+
+        """        
+          - If left foot is active:
+              * Remove contact for left foot. (setActive(False))
+              * Activate swing task for left foot. (setActive(True))
+              * Set wrench limits for left foot to zero. (setWrenchLimits)
+              * Command the left foot to rise to a specified height for the first half of the cycle. (setReference)
+              * Command the left foot to lower back to the ground for the remaining half. (setReference)
+              
+          - Else:
+              * Remove contact for right foot. (setActive(False))
+              * Activate swing task for right foot. (setActive(True))
+              * Set wrench limits for right foot to zero. (setWrenchLimits)
+              * Command the right foot to rise to a specified height for the first half of the cycle. (setReference)
+              * Command the right foot to lower back to the ground for the remaining half. (setReference)
+        """
 
         ###################################
         

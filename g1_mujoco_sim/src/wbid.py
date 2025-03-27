@@ -4,7 +4,8 @@ import numpy as np
 
 from pyopensot.tasks.acceleration import CoM, Cartesian, Postural, AngularMomentum, DynamicFeasibility
 from pyopensot.constraints.acceleration import JointLimits, VelocityLimits
-from pyopensot.constraints.force import FrictionCone
+from pyopensot.constraints.force import FrictionCone, WrenchLimits
+from pyopensot import solver_back_ends
 import pyopensot as pysot
 import tf.transformations as tf_trans
 from ttictoc import tic, toc
@@ -129,8 +130,41 @@ class WholeBodyID:
                 )
             )
 
+        # Set swing task (Dummy hands now)
+        self.swing_tasks = list()
+        self.swing_cartesian_frames = [
+            "left_hand_point_contact",
+            "right_hand_point_contact",
+        ]
+        for swing_cartesian_frame in self.swing_cartesian_frames:
+            self.swing_tasks.append(
+                Cartesian(
+                    swing_cartesian_frame,
+                    self.model,
+                    swing_cartesian_frame,
+                    "world",
+                    self.variables.getVariable("qddot"),
+                )
+            )
+            self.swing_tasks[-1].setLambda(1., 1.)
+            swing_gain = 1.
+            swing_Kp = np.diag([350., 350., 560., 70., 70., 70.]) * swing_gain
+            swing_Kd = np.diag([10., 10., 17., 7., 7., 7.]) * swing_gain
+            self.swing_tasks[-1].setKp(swing_Kp)
+            self.swing_tasks[-1].setKd(swing_Kd)
+        
+        # Set wrench limits (x, y are irrelevant since are constrained by friction cone)
+        self.wrench_limits = list()
+        for contact_frame in line_foot_contact_frames:
+            self.wrench_limits.append(
+                WrenchLimits(
+                    contact_frame,
+                    np.array([0., 0., 3.]),
+                    np.array([666., 666., 666.]),
+                    self.variables.getVariable(contact_frame))
+            )
 
-        posture_gain = 40.
+        posture_gain = 20.
         posture = Postural(self.model, self.variables.getVariable("qddot"))
         posture_Kp = np.eye(self.model.nv) * 2. * posture_gain
         posture.setKp(posture_Kp)
@@ -150,24 +184,25 @@ class WholeBodyID:
         for i in range(len(self.contact_frames)):
             force_variables.append(self.variables.getVariable(self.contact_frames[i]))
         
+        
+
         # Regularization of acceleration
         req_qddot = MinimizeVariable("acceleration", self.variables.getVariable("qddot"))
 
         # # Regularization of forces
-        # req_forces_0 = MinimizeVariable("min_forces", self.variables.getVariable(self.contact_frames[0]))
-        # req_forces_1 = MinimizeVariable("min_forces", self.variables.getVariable(self.contact_frames[1]))
-        # req_forces_2 = MinimizeVariable("min_forces", self.variables.getVariable(self.contact_frames[2]))
-        # req_forces_3 = MinimizeVariable("min_forces", self.variables.getVariable(self.contact_frames[3]))
+        req_forces_0 = MinimizeVariable("min_forces", self.variables.getVariable(self.contact_frames[0]))
+        req_forces_1 = MinimizeVariable("min_forces", self.variables.getVariable(self.contact_frames[1]))
+        req_forces_2 = MinimizeVariable("min_forces", self.variables.getVariable(self.contact_frames[2]))
+        req_forces_3 = MinimizeVariable("min_forces", self.variables.getVariable(self.contact_frames[3]))
 
-        min_force_weight = 1e-2
+        min_force_weight = 1e-5
         # For the self.base task taking only the orientation part
-        self.stack = 1.0*self.com + 0.02*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]) + 0.3*angular_momentum + 0.005*req_qddot 
-        # + min_force_weight*req_forces_0 + min_force_weight*req_forces_1 + min_force_weight*req_forces_2 + min_force_weight*req_forces_3
-
+        self.stack = 1.0*self.com + 0.02*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]) + 0.3*angular_momentum + 0.005*req_qddot + min_force_weight*req_forces_0 + min_force_weight*req_forces_1 + min_force_weight*req_forces_2 + min_force_weight*req_forces_3
+        # self.stack += 1.0*(self.base%[3, 4 ,5])
+        
         for i in range(len(self.cartesian_contact_task_frames)):
             self.contact_tasks[i].setLambda(500.0, 20.)
             self.stack = self.stack + 10.0 * (self.contact_tasks[i])
-
 
         # Task for factual - fdesired
         self.wrench_tasks = list()
@@ -206,10 +241,11 @@ class WholeBodyID:
                 self.variables.getVariable(self.contact_frames[i]),
                 self.model,
                 mu,
-            )
+            ) << self.wrench_limits[i]
 
         # Creates the solver
-        self.solver = pysot.iHQP(self.stack)
+        self.solver = pysot.iHQP(self.stack) #, solver_back_ends.eiQuadProg)
+                                 
 
     def updateModel(self, q, dq):
         self.model.setJointPosition(q)
@@ -231,22 +267,22 @@ class WholeBodyID:
             # for the base task
 
             # x_opt1[0:3] contains roll, pitch, yaw for the torso orientation.
-            # roll, pitch, yaw = x_opt1[0:3]
-            # R = tf_trans.euler_matrix(roll, pitch, yaw)[0:3, 0:3]
+            roll, pitch, yaw = x_opt1[0:3]
+            R = tf_trans.euler_matrix(roll, pitch, yaw)[0:3, 0:3]
 
             # # Get current full homogeneous transformation.
-            # base_affine = self.base.getReference() 
+            base_affine = self.base.getReference() 
 
             # # Update only the rotation part.
-            # base_affine[0].linear = R
+            base_affine[0].linear = R
 
             # # Linear and Angular Velocity. Linear drops in the stack
-            # linear_velocity = x_opt1[9:12]
-            # angular_velocity = x_opt1[6:9]
-            # velocity = np.hstack((linear_velocity, angular_velocity))
+            linear_velocity = x_opt1[9:12]
+            angular_velocity = x_opt1[6:9]
+            velocity = np.hstack((linear_velocity, angular_velocity))
             
             # # Pass the updated homogeneous transformation.
-            # self.base.setReference(base_affine[0], velocity)
+            self.base.setReference(base_affine[0], velocity)
             # CoM position, CoM velocity, CoM acceleration references 
             
             # Calculate from MPC result
