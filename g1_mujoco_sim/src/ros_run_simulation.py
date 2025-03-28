@@ -136,7 +136,7 @@ class G1MujocoSimulation:
             self.u_opt0[i * 3: i * 3 + 3] = [contact_point.force.x, contact_point.force.y, contact_point.force.z]
             self.contact_states[i] = contact_point.active
             
-        print("u_opt0\n", self.u_opt0)
+        # print("u_opt0\n", self.u_opt0)
 
     def permute_muj_to_xbi(self, xbi_qpos):
         """Convert mujoco qpos to xbi qpos."""
@@ -199,7 +199,7 @@ class G1MujocoSimulation:
         ###################################
 
         """        
-          - If left foot is active:
+          - If left foot is not active:
               * Remove contact for left foot. (setActive(False))
               * Activate swing task for left foot. (setActive(True))
               * Set wrench limits for left foot to zero. (setWrenchLimits)
@@ -213,7 +213,34 @@ class G1MujocoSimulation:
               * Command the right foot to rise to a specified height for the first half of the cycle. (setReference)
               * Command the right foot to lower back to the ground for the remaining half. (setReference)
         """
+        def feet_gait_procedure(foot):
+            """Deploy the feet gait procedure based on active leg"""
 
+            self.start_swing_time = self.sim_time
+            self.end_swing_time = self.start_swing_time + 0.4
+            self.right_swing_time_set = True
+            
+            foot_task = {"left": 0, "right": 1}[foot]
+
+            WBID.contact_tasks[foot_task].setActive(False)
+            WBID.swing_tasks[foot_task].setActive(True)
+            WBID.wrench_limits.setWrenchLimits(foot + "_line_contact_lower", 0.0, 0.0, 0.0)
+            WBID.wrench_limits.setWrenchLimits(foot + "_line_contact_upper", 0.0, 0.0, 0.0)
+            swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc = WBID.swing_tasks[foot_task].getReference()
+            # Set the reference for the left foot to rise
+            if self.sim_time < self.end_swing_time/2:
+                swing_task_reference_pose.translation += (0., 0., 0.1)
+                swing_task_reference_vel.translation = (0., 0., 0.)
+                swing_task_reference_acc.translation = (0., 0., 0.)
+                WBID.swing_tasks[foot_task].setReference(swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc)
+            # Set the reference for the left foot to lower
+            else:
+                swing_task_reference_pose.translation += (0., 0., -0.1)
+                swing_task_reference_vel.translation = (0., 0., 0.)
+                swing_task_reference_acc.translation = (0., 0., 0.)
+                WBID.swing_tasks[foot_task].setReference(swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc)
+    
+        feet_gait_procedure("left")
         ###################################
         
         WBID.stack.update()
