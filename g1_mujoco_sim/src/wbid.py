@@ -3,53 +3,15 @@ from xbot2_interface import pyxbot2_interface as xbi
 import numpy as np
 
 from pyopensot.tasks.acceleration import CoM, Cartesian, Postural, AngularMomentum, DynamicFeasibility
-from pyopensot.constraints.acceleration import JointLimits, VelocityLimits
+from pyopensot.constraints.acceleration import JointLimits, VelocityLimits, TorqueLimits
 from pyopensot.constraints.force import FrictionCone, WrenchLimits
+from pyopensot.tasks import MinimizeVariable
+from pyopensot.variables import Torque
 from pyopensot import solver_back_ends
 import pyopensot as pysot
 import tf.transformations as tf_trans
 from ttictoc import tic, toc
 
-def MinimizeVariable(name, opt_var): 
-	'''Task to regularize a variable using a generic task'''
-	A = opt_var.getM()
-
-	# The minus because y = Mx + q is mapped on ||Ax - b|| 
-	b = -opt_var.getq()
-	task = pysot.GenericTask(name, A, b, opt_var)
-
-
-	# Setting the regularization weight.
-	task.setWeight(1.)
-	task.update()
-
-	return task
-
-def Wrench(name, distal_link, base_link, wrench):
-	'''Task to minimize f-fd using a generic task'''
-
-	# print(wrench)
-	# print(wrench.getM().shape)
-	# print(wrench.getq())
-
-	A = np.eye(3)
-	b =	- wrench.getq()
-	
-	return pysot.GenericTask(name, A, b, wrench) 
-
-def setDesiredForce(Wrench_task, wrench_desired, wrench):
-	# b = -(wrench - wrench_desired).getq()
-
-	b = wrench_desired - wrench.getq()
-	
-	# print(f"b: {b}")
-	
-	# print(f'wrench_desired_dimensions: {wrench_desired.shape}')
-	# print(f'wrench: {wrench}')
-	# print(wrench.getM().shape)
-	# print(f'wrench_dimensions: {wrench.getq().shape}')
-	# print(f'b_dimensions: {b.shape}')
-	Wrench_task.setb(b)
 
 class WholeBodyID:
     def __init__(self, urdf, dt, q_init, friction_coef=0.3):
@@ -58,6 +20,7 @@ class WholeBodyID:
         self.model = xbi.ModelInterface2(urdf)
         self.qmin, self.qmax = self.model.getJointLimits()
         self.dqmax = self.model.getVelocityLimits()
+        self.torque_limits = self.model.getEffortLimits()
 
         # Initial Joint Configuration
         self.q = q_init
@@ -89,15 +52,13 @@ class WholeBodyID:
 
         # Set CoM tracking task
         self.com = CoM(self.model, self.variables.getVariable("qddot"))
-        com_gain = 1.
+        com_gain = 3.
         com_Kp = np.eye(3) * 100. * com_gain
         self.com.setKp(com_Kp)
         com_Kd = np.diag([30., 30., 50.]) * com_gain
         self.com.setKd(com_Kd)
         self.com.setLambda(1.0, 1.0)
 
-        # self.com.setKd(50)
-        # self.com.setLambda(1.0, 1.0)
         # FK at initial config
         self.com_ref, vel_ref, acc_ref = self.com.getReference()
         self.com0 = self.com_ref.copy()
@@ -183,8 +144,9 @@ class WholeBodyID:
         force_variables = list()
         for i in range(len(self.contact_frames)):
             force_variables.append(self.variables.getVariable(self.contact_frames[i]))
-        
-        
+
+        # Torque 
+        torques = Torque(self.model, self.variables.getVariable("qddot"), self.contact_frames, force_variables)
 
         # Regularization of acceleration
         req_qddot = MinimizeVariable("acceleration", self.variables.getVariable("qddot"))
@@ -197,18 +159,21 @@ class WholeBodyID:
 
         min_force_weight = 1e-5
         # For the self.base task taking only the orientation part
-        self.stack = 1.0*self.com + 0.02*(posture%[18, 19, 20, 21, 22, 23]) + 0.3*angular_momentum + 0.005*req_qddot + min_force_weight*req_forces_0 + min_force_weight*req_forces_1 + min_force_weight*req_forces_2 + min_force_weight*req_forces_3
-        # , 24, 25, 26, 27, 28
-        # self.stack += 1.0*(self.base%[3, 4 ,5])
+        self.stack = 1.0*self.com + 0.02*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]) + 0.3*angular_momentum + 0.005*req_qddot 
+        self.stack += min_force_weight*req_forces_0 + min_force_weight*req_forces_1 + min_force_weight*req_forces_2 + min_force_weight*req_forces_3
+        self.stack += + 1e-8 * MinimizeVariable("min_torques", torques)
+        # 
+        self.stack += 1.0*(self.base%[3, 4 ,5])
         
         for i in range(len(self.cartesian_contact_task_frames)):
-            self.contact_tasks[i].setLambda(500.0, 20.)
+            self.contact_tasks[i].setLambda(300.0, 20.)
             self.stack = self.stack + 10.0 * (self.contact_tasks[i])
 
         # Task for factual - fdesired
         self.wrench_tasks = list()
         for contact_frame in self.contact_frames:
-            self.wrench_tasks.append(Wrench(contact_frame, contact_frame, "pelvis", self.variables.getVariable(contact_frame)))
+            self.wrench_tasks.append(MinimizeVariable(contact_frame, self.variables.getVariable(contact_frame)))
+            # self.wrench_tasks.append(Wrench(contact_frame, contact_frame, "pelvis", self.variables.getVariable(contact_frame)))
             self.stack = self.stack + 0.1*(self.wrench_tasks[-1])
         
         self.dynamics_constraint = DynamicFeasibility(
@@ -234,6 +199,15 @@ class WholeBodyID:
         self.stack = self.stack << VelocityLimits(
             self.model, self.variables.getVariable("qddot"), self.dqmax, self.dt
         )
+
+        self.stack = self.stack << TorqueLimits(
+             self.model,
+             self.variables.getVariable("qddot"),
+             force_variables,
+             self.contact_frames,
+             self.torque_limits,
+        )
+          
         for i in range(len(self.contact_frames)):
             T = self.model.getPose(self.contact_frames[i])
             mu = (T.linear, self.friction_coef)  # rotation is world to contact
@@ -245,7 +219,7 @@ class WholeBodyID:
             ) << self.wrench_limits[i]
 
         # Creates the solver
-        self.solver = pysot.iHQP(self.stack) #, solver_back_ends.eiQuadProg)
+        self.solver = pysot.iHQP(self.stack, solver_back_ends.proxQP) #, solver_back_ends.eiQuadProg)
                                  
 
     def updateModel(self, q, dq):
@@ -271,7 +245,7 @@ class WholeBodyID:
             roll, pitch, yaw = x_opt1[0:3]
             R = tf_trans.euler_matrix(roll, pitch, yaw)[0:3, 0:3]
 
-            # # Get current full homogeneous transformation.
+            # # Get current full homogeneous transformation. 
             base_affine = self.base.getReference() 
 
             # # Update only the rotation part.
@@ -297,10 +271,8 @@ class WholeBodyID:
             self.com.setReference(x_opt1[3:6], x_opt1[9:12], acceleration_reference)
 
             for i in range(len(self.contact_frames)):
-                setDesiredForce(self.wrench_tasks[i], u_opt0[i*3:i*3+3], self.variables.getVariable(self.contact_frames[i]))            
-         
-        
-
+                self.wrench_tasks[i].setReference(u_opt0[i*3:i*3+3])
+                # setDesiredForce(self.wrench_tasks[i], u_opt0[i*3:i*3+3], self.variables.getVariable(self.contact_frames[i]))
 
     def solveQP(self):
         self.x = self.solver.solve()
