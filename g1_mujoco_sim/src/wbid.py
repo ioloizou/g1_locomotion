@@ -121,7 +121,7 @@ class WholeBodyID:
                 WrenchLimits(
                     contact_frame,
                     np.array([0., 0., 3.]),
-                    np.array([666., 666., 666.]),
+                    np.array([1000., 1000., 1000.]),
                     self.variables.getVariable(contact_frame))
             )
 
@@ -161,12 +161,12 @@ class WholeBodyID:
         # For the self.base task taking only the orientation part
         self.stack = 1.0*self.com + 0.02*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]) + 0.3*angular_momentum + 0.005*req_qddot 
         self.stack += min_force_weight*req_forces_0 + min_force_weight*req_forces_1 + min_force_weight*req_forces_2 + min_force_weight*req_forces_3
-        self.stack += + 1e-8 * MinimizeVariable("min_torques", torques)
+        self.stack += 1e-8 * MinimizeVariable("min_torques", torques)
         # 
         self.stack += 1.0*(self.base%[3, 4 ,5])
         
         for i in range(len(self.cartesian_contact_task_frames)):
-            self.contact_tasks[i].setLambda(300.0, 20.)
+            self.contact_tasks[i].setLambda(500.0, 20.)
             self.stack = self.stack + 10.0 * (self.contact_tasks[i])
 
         # Task for factual - fdesired

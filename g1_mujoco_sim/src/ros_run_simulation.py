@@ -9,7 +9,7 @@ import tf
 import numpy as np
 from ttictoc import tic, toc
 from pal_statistics import StatisticsRegistry
-
+from rosgraph_msgs.msg import Clock
 from g1_msgs.msg import SRBD_state, ContactPoint
 
 from config import q_init
@@ -23,14 +23,15 @@ def publish_current_state(pub_srbd,
                           base_angular_velocity_curr, 
                           com_linear_velocity_curr,
                           foot_positions_curr,
-                          qp_forces
+                          qp_forces,
+                          sim_time=0.0
                           ):
     """
     Publish the current state of the robot to the ROS topic.
     """
     
     srbd_state_msg.contacts = []
-    srbd_state_msg.header.stamp = rospy.Time.now()
+    srbd_state_msg.header.stamp = rospy.Time.from_sec(sim_time)
     srbd_state_msg.header.frame_id = "SRBD"
     
     srbd_state_msg.orientation.x = base_orientation_curr[0]
@@ -106,6 +107,9 @@ class G1MujocoSimulation:
 
         # Create viewer
         self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
+
+        # Add simulation time publisher
+        self.pub_sim_time = rospy.Publisher("/simulation_time", Clock, queue_size=10)
 
         # Running flag
         self.running = True
@@ -187,17 +191,6 @@ class G1MujocoSimulation:
         # Right foot contact task is active if either right foot contact point is active
         right_foot_active = self.contact_states[2] == 1 or self.contact_states[3] == 1
 
-        # Set the contact tasks active state
-        # WBID.contact_tasks[0].setActive(left_foot_active)   # left foot
-        # WBID.contact_tasks[1].setActive(right_foot_active)  # right foot
-        
-        # for i, contact in enumerate(["left_foot_line_contact_lower", "left_foot_line_contact_upper", "right_foot_line_contact_lower", "right_foot_line_contact_upper"]):
-        #     if self.contact_states[i] == 1:
-        #         WBID.dynamics_constraint.enableContact(contact)
-        #     else:
-        #         WBID.dynamics_constraint.disableContact(contact)  # dynamics constraint
-        ###################################
-
         """        
           - If left foot is not active:
               * Remove contact for left foot. (setActive(False))
@@ -215,46 +208,58 @@ class G1MujocoSimulation:
         """
         def feet_gait_procedure(foot):
             """Deploy the feet gait procedure based on active leg"""
-            # self.start_swing_time = self.sim_time
-            # self.end_swing_time = self.start_swing_time + 0.4
-            # self.right_swing_time_set = True
+            self.start_swing_time = self.sim_time
+            self.end_swing_time = self.start_swing_time + 0.4
             
+            # To match left, right with the order of the tasks
             if foot == "left":
-                foot_in_swing = 0
-                foot_in_contact = 1
+                foot_in_swing, foot_in_contact = (0, 1)
+                wrench_indexes_swing = [0, 1]
+                wrench_indexes_contact = [2, 3] 
             else:
-                foot_in_swing = 1
-                foot_in_contact = 0
+                foot_in_swing, foot_in_contact = (1, 0)
+                wrench_indexes_swing = [2, 3]
+                wrench_indexes_contact = [0, 1]
+            
+            # Contact related
+            WBID.contact_tasks[foot_in_contact].setActive(True)
+            WBID.contact_tasks[foot_in_contact].reset()
+            WBID.wrench_limits[wrench_indexes_contact[0]].setWrenchLimits(np.array([0.0, 0.0, 3.0]), np.array([1000.0, 1000.0, 1000.0]),)
+            WBID.wrench_limits[wrench_indexes_contact[1]].setWrenchLimits(np.array([0.0, 0.0, 3.0]), np.array([1000.0, 1000.0, 1000.0]),)
 
-            # The other foot is the foot in contact
-            foot_in_contact = "right" if foot == "left" else "left"
-                        
+            # Swing related                        
             WBID.contact_tasks[foot_in_swing].setActive(False)
             WBID.swing_tasks[foot_in_swing].setActive(True)
             # I need to reset because if i do setActive(True) it will not reset the reference
             WBID.swing_tasks[foot_in_swing].reset()
-            WBID.wrench_limits.setWrenchLimits(foot + "_line_contact_lower", 0.0, 0.0, 0.0)
-            WBID.wrench_limits.setWrenchLimits(foot + "_line_contact_upper", 0.0, 0.0, 0.0)
+            WBID.wrench_limits[wrench_indexes_swing[0]].setWrenchLimits(np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]))
+            WBID.wrench_limits[wrench_indexes_swing[1]].setWrenchLimits(np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]))
             swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc = WBID.swing_tasks[foot_in_swing].getReference()
             # Set the reference for the left foot to rise
             if self.sim_time < self.end_swing_time/2:
-                swing_task_reference_pose.translation += (0., 0., 0.03)
-                swing_task_reference_vel.translation = (0., 0., 0.)
-                swing_task_reference_acc.translation = (0., 0., 0.)
+                swing_task_reference_pose.translation += (0., 0., 0.1)
+                # swing_task_reference_vel.translation = (0., 0., 0.)
+                # swing_task_reference_acc.translation = (0., 0., 0.)
                 WBID.swing_tasks[foot_in_swing].setReference(swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc)
             # Set the reference for the left foot to lower
             else:
-                swing_task_reference_pose.translation += (0., 0., -0.03)
-                swing_task_reference_vel.translation = (0., 0., 0.)
-                swing_task_reference_acc.translation = (0., 0., 0.)
+                swing_task_reference_pose.translation += (0., 0., -0.1)
+                # swing_task_reference_vel.translation = (0., 0., 0.)
+                # swing_task_reference_acc.translation = (0., 0., 0.)
                 WBID.swing_tasks[foot_in_swing].setReference(swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc)
-    
-        # feet_gait_procedure("left")
+
+        if self.sim_time - getattr(self, 'last_log_time', 0.0) >= 0.1:
+            if left_foot_active:
+                feet_gait_procedure("left")
+                rospy.loginfo('Left foot active')
+            elif right_foot_active:
+                feet_gait_procedure("right")
+                rospy.loginfo('Right foot active')
+            self.last_log_time = self.sim_time
         ###################################
         
         WBID.stack.update()
         WBID.setReference(self.sim_time, self.x_opt1, self.u_opt0)
-        # WBID.setReference(self.sim_time)
         WBID.solveQP()
 
         
@@ -303,8 +308,14 @@ class G1MujocoSimulation:
                               base_angular_velocity_curr,
                               com_linear_velocity_curr,
                               foot_positions_curr,
-                              WBID.contact_forces
+                              WBID.contact_forces,
+                              self.sim_time
                               )
+
+        # Publish the simulation time
+        sim_time_msg = Clock()
+        sim_time_msg.clock = rospy.Time.from_sec(self.sim_time)
+        self.pub_sim_time.publish(sim_time_msg)
 
         # Publish the statistics
         self.registry.publish()
@@ -312,7 +323,6 @@ class G1MujocoSimulation:
 
     def run(self):
         """Run simple real-time simulation."""
-        prev_time = time.time()
         self.sim_time = 0.0
         self.pass_count = 0
 
