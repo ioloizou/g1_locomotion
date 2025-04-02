@@ -125,7 +125,7 @@ class WholeBodyID:
                     self.variables.getVariable(contact_frame))
             )
 
-        posture_gain = 5.
+        posture_gain = 40.
         posture = Postural(self.model, self.variables.getVariable("qddot"))
         posture_Kp = np.eye(self.model.nv) * 2. * posture_gain
         posture.setKp(posture_Kp)
