@@ -208,9 +208,20 @@ class G1MujocoSimulation:
         """
         def feet_gait_procedure(foot):
             """Deploy the feet gait procedure based on active leg"""
-            self.start_swing_time = self.sim_time
-            self.end_swing_time = self.start_swing_time + 0.4
             
+            self.start_swing_time = self.sim_time
+            self.end_swing_time = self.start_swing_time + 0.04
+            self.last_swing_time = self.start_swing_time
+            self.is_swing_time_set = True
+
+            if self.is_swing_time_set:
+                # If the swing time is set, check if the swing time is over
+                if self.sim_time >= self.end_swing_time:
+                    # Reset the swing time
+                    self.is_swing_time_set = False
+                    self.last_swing_time = self.sim_time
+            
+
             # To match left, right with the order of the tasks
             if foot == "left":
                 foot_in_swing, foot_in_contact = (0, 1)
@@ -235,19 +246,28 @@ class G1MujocoSimulation:
             WBID.wrench_limits[wrench_indexes_swing[0]].setWrenchLimits(np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]))
             WBID.wrench_limits[wrench_indexes_swing[1]].setWrenchLimits(np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]))
             swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc = WBID.swing_tasks[foot_in_swing].getReference()
+            
             # Set the reference for the left foot to rise
             if self.sim_time < self.end_swing_time/2:
                 swing_task_reference_pose.translation += (0., 0., 0.1)
                 # swing_task_reference_vel.translation = (0., 0., 0.)
                 # swing_task_reference_acc.translation = (0., 0., 0.)
                 WBID.swing_tasks[foot_in_swing].setReference(swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc)
+                rospy.loginfo('Swing up')
+            
             # Set the reference for the left foot to lower
             else:
                 swing_task_reference_pose.translation += (0., 0., -0.1)
                 # swing_task_reference_vel.translation = (0., 0., 0.)
                 # swing_task_reference_acc.translation = (0., 0., 0.)
                 WBID.swing_tasks[foot_in_swing].setReference(swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc)
-
+                rospy.loginfo('Swing down')
+        
+        if left_foot_active:
+            feet_gait_procedure("left")
+        elif right_foot_active:
+            feet_gait_procedure("right")    
+        
         if self.sim_time - getattr(self, 'last_log_time', 0.0) >= 0.1:
             if left_foot_active:
                 feet_gait_procedure("left")

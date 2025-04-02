@@ -93,9 +93,9 @@ class WholeBodyID:
 
         # Set swing task (Dummy hands now)
         self.swing_tasks = list()
-        self.swing_cartesian_frames = [
-            "left_hand_point_contact",
-            "right_hand_point_contact",
+        self.swing_cartesian_frames =  [
+            "left_foot_point_contact",
+            "right_foot_point_contact",
         ]
         for swing_cartesian_frame in self.swing_cartesian_frames:
             self.swing_tasks.append(
@@ -125,7 +125,7 @@ class WholeBodyID:
                     self.variables.getVariable(contact_frame))
             )
 
-        posture_gain = 40.
+        posture_gain = 5.
         posture = Postural(self.model, self.variables.getVariable("qddot"))
         posture_Kp = np.eye(self.model.nv) * 2. * posture_gain
         posture.setKp(posture_Kp)
@@ -160,14 +160,14 @@ class WholeBodyID:
         min_force_weight = 1e-5
         # For the self.base task taking only the orientation part
         self.stack = 1.0*self.com + 0.02*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]) + 0.3*angular_momentum + 0.005*req_qddot 
-        self.stack += min_force_weight*req_forces_0 + min_force_weight*req_forces_1 + min_force_weight*req_forces_2 + min_force_weight*req_forces_3
+        # self.stack += min_force_weight*req_forces_0 + min_force_weight*req_forces_1 + min_force_weight*req_forces_2 + min_force_weight*req_forces_3
         self.stack += 1e-8 * MinimizeVariable("min_torques", torques)
         # 
         self.stack += 1.0*(self.base%[3, 4 ,5])
         
         for i in range(len(self.cartesian_contact_task_frames)):
             self.contact_tasks[i].setLambda(500.0, 20.)
-            self.stack = self.stack + 10.0 * (self.contact_tasks[i])
+            self.stack = self.stack + 10.0 * (self.contact_tasks[i]) + 0.7*self.swing_tasks[i]
 
         # Task for factual - fdesired
         self.wrench_tasks = list()
