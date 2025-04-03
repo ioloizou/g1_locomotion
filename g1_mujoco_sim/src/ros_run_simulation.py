@@ -234,7 +234,7 @@ class G1MujocoSimulation:
                 # The other foot will be chosen on the next call
             
             # To match left, right with the order of the tasks
-            if foot == "left":
+            if foot == "right":
                 foot_in_swing, foot_in_contact = (0, 1)
                 wrench_indexes_swing = [0, 1]
                 wrench_indexes_contact = [2, 3] 
@@ -258,21 +258,29 @@ class G1MujocoSimulation:
             WBID.wrench_limits[wrench_indexes_swing[1]].setWrenchLimits(np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]))
             swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc = WBID.swing_tasks[foot_in_swing].getReference()
             
+            # Maximum swing height
+            max_swing_height = 0.02
+
             # Calculate swing progress (0.0 to 1.0)
             cycle_progress = (self.sim_time - self.start_swing_time) / self.swing_duration
             
             # Set the reference for the foot to rise or lower based on cycle progress
             if cycle_progress < 0.5:  # First half - swing up
-                swing_task_reference_pose.translation += (0., 0., 0.05)
+                # Rise proportionately from 0 to max_swing_height
+                delta_z = max_swing_height * (cycle_progress / 0.5)
+                swing_task_reference_pose.translation += (0., 0., delta_z)
                 WBID.swing_tasks[foot_in_swing].setReference(swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc)
                 rospy.loginfo(f'{foot} foot swinging up, progress: {cycle_progress:.2f}')
             else:  # Second half - swing down
-                swing_task_reference_pose.translation += (0., 0., -0.05)
+                # Fall proportionately from max_swing_height back to 0
+                delta_z = max_swing_height * ((1.0 - cycle_progress) / 0.5)
+                swing_task_reference_pose.translation += (0., 0., -delta_z)
                 WBID.swing_tasks[foot_in_swing].setReference(swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc)
                 rospy.loginfo(f'{foot} foot swinging down, progress: {cycle_progress:.2f}')
         
-
-        if left_foot_active:
+        if left_foot_active and right_foot_active:
+            rospy.loginfo("Double support phase")
+        elif left_foot_active:
             feet_gait_procedure("left")
         elif right_foot_active:
             feet_gait_procedure("right")
