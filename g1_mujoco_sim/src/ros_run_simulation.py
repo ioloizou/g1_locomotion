@@ -91,7 +91,7 @@ class G1MujocoSimulation:
         self.start_swing_time = 0.0
         self.end_swing_time = 0.0
         self.last_swing_time = 0.0
-        self.swing_duration = 0.4 
+        self.swing_duration = 0.2 
 
         # Find the model path
         rospack = rospkg.RosPack()
@@ -199,21 +199,7 @@ class G1MujocoSimulation:
         # Right foot contact task is active if either right foot contact point is active
         right_foot_active = self.contact_states[2] == 1 or self.contact_states[3] == 1
 
-        """        
-          - If left foot is not active:
-              * Remove contact for left foot. (setActive(False))
-              * Activate swing task for left foot. (setActive(True))
-              * Set wrench limits for left foot to zero. (setWrenchLimits)
-              * Command the left foot to rise to a specified height for the first half of the cycle. (setReference)
-              * Command the left foot to lower back to the ground for the remaining half. (setReference)
-              
-          - Else:
-              * Remove contact for right foot. (setActive(False))
-              * Activate swing task for right foot. (setActive(True))
-              * Set wrench limits for right foot to zero. (setWrenchLimits)
-              * Command the right foot to rise to a specified height for the first half of the cycle. (setReference)
-              * Command the right foot to lower back to the ground for the remaining half. (setReference)
-        """
+
         def feet_gait_procedure(foot):
             """Deploy the feet gait procedure based on active leg"""
             
@@ -245,6 +231,8 @@ class G1MujocoSimulation:
             
             # Contact related
             WBID.contact_tasks[foot_in_contact].setActive(True)
+            WBID.swing_tasks[foot_in_swing].setActive(False)
+            WBID.swing_tasks[foot_in_swing].reset()
             WBID.contact_tasks[foot_in_contact].reset()
             WBID.wrench_limits[wrench_indexes_contact[0]].setWrenchLimits(np.array([0.0, 0.0, 3.0]), np.array([1000.0, 1000.0, 1000.0]),)
             WBID.wrench_limits[wrench_indexes_contact[1]].setWrenchLimits(np.array([0.0, 0.0, 3.0]), np.array([1000.0, 1000.0, 1000.0]),)
@@ -253,6 +241,7 @@ class G1MujocoSimulation:
             WBID.contact_tasks[foot_in_swing].setActive(False)
             WBID.swing_tasks[foot_in_swing].setActive(True)
             # I need to reset because if i do setActive(True) it will not reset the reference
+            WBID.contact_tasks[foot_in_swing].reset()
             WBID.swing_tasks[foot_in_swing].reset()
             WBID.wrench_limits[wrench_indexes_swing[0]].setWrenchLimits(np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]))
             WBID.wrench_limits[wrench_indexes_swing[1]].setWrenchLimits(np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]))
@@ -270,13 +259,13 @@ class G1MujocoSimulation:
                 delta_z = max_swing_height * (cycle_progress / 0.5)
                 swing_task_reference_pose.translation += (0., 0., delta_z)
                 WBID.swing_tasks[foot_in_swing].setReference(swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc)
-                rospy.loginfo(f'{foot} foot swinging up, progress: {cycle_progress:.2f}')
+                rospy.loginfo(f'{foot} in contact, other foot swinging up, progress: {cycle_progress:.2f}')
             else:  # Second half - swing down
                 # Fall proportionately from max_swing_height back to 0
                 delta_z = max_swing_height * ((1.0 - cycle_progress) / 0.5)
                 swing_task_reference_pose.translation += (0., 0., -delta_z)
                 WBID.swing_tasks[foot_in_swing].setReference(swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc)
-                rospy.loginfo(f'{foot} foot swinging down, progress: {cycle_progress:.2f}')
+                rospy.loginfo(f'{foot} in contact, other foot swinging down, progress: {cycle_progress:.2f}')
         
         if left_foot_active and right_foot_active:
             rospy.loginfo("Double support phase")
