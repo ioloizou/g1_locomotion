@@ -52,7 +52,7 @@ class WholeBodyID:
 
         # Set CoM tracking task
         self.com = CoM(self.model, self.variables.getVariable("qddot"))
-        com_gain = 3.
+        com_gain = 2.
         com_Kp = np.eye(3) * 100. * com_gain
         self.com.setKp(com_Kp)
         com_Kd = np.diag([30., 30., 50.]) * com_gain
@@ -108,7 +108,7 @@ class WholeBodyID:
                 )
             )
             self.swing_tasks[-1].setLambda(1., 1.)
-            swing_gain = 1.
+            swing_gain = 2.
             swing_Kp = np.diag([350., 350., 560., 70., 70., 70.]) * swing_gain
             swing_Kd = np.diag([10., 10., 17., 7., 7., 7.]) * swing_gain
             self.swing_tasks[-1].setKp(swing_Kp)
@@ -120,12 +120,12 @@ class WholeBodyID:
             self.wrench_limits.append(
                 WrenchLimits(
                     contact_frame,
-                    np.array([0., 0., 3.]),
+                    np.array([0., 0., 10.]),
                     np.array([1000., 1000., 1000.]),
                     self.variables.getVariable(contact_frame))
             )
 
-        posture_gain = 40.
+        posture_gain = 10.
         posture = Postural(self.model, self.variables.getVariable("qddot"))
         posture_Kp = np.eye(self.model.nv) * 2. * posture_gain
         posture.setKp(posture_Kp)
@@ -166,14 +166,13 @@ class WholeBodyID:
         self.stack += 1.0*(self.base%[3, 4 ,5])
         
         for i in range(len(self.cartesian_contact_task_frames)):
-            self.contact_tasks[i].setLambda(500.0, 20.)
-            self.stack = self.stack + 10.0 * (self.contact_tasks[i]) + 0.7*self.swing_tasks[i]
+            self.contact_tasks[i].setLambda(300.0, 20.)
+            self.stack = self.stack + 3.0 * (self.contact_tasks[i]) + 0.8*self.swing_tasks[i]
 
         # Task for factual - fdesired
         self.wrench_tasks = list()
         for contact_frame in self.contact_frames:
             self.wrench_tasks.append(MinimizeVariable(contact_frame, self.variables.getVariable(contact_frame)))
-            # self.wrench_tasks.append(Wrench(contact_frame, contact_frame, "pelvis", self.variables.getVariable(contact_frame)))
             self.stack = self.stack + 0.1*(self.wrench_tasks[-1])
         
         self.dynamics_constraint = DynamicFeasibility(
@@ -219,7 +218,7 @@ class WholeBodyID:
             ) << self.wrench_limits[i]
 
         # Creates the solver
-        self.solver = pysot.iHQP(self.stack, solver_back_ends.proxQP) #, solver_back_ends.eiQuadProg)
+        self.solver = pysot.iHQP(self.stack) #, solver_back_ends.eiQuadProg)
                                  
 
     def updateModel(self, q, dq):

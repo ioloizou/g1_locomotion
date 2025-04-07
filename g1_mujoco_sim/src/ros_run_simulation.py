@@ -91,7 +91,7 @@ class G1MujocoSimulation:
         self.start_swing_time = 0.0
         self.end_swing_time = 0.0
         self.last_swing_time = 0.0
-        self.swing_duration = 0.2 
+        self.swing_duration = 0.25 
 
         # Find the model path
         rospack = rospkg.RosPack()
@@ -231,11 +231,11 @@ class G1MujocoSimulation:
             
             # Contact related
             WBID.contact_tasks[foot_in_contact].setActive(True)
-            WBID.swing_tasks[foot_in_swing].setActive(False)
-            WBID.swing_tasks[foot_in_swing].reset()
+            WBID.swing_tasks[foot_in_contact].setActive(False)
+            WBID.swing_tasks[foot_in_contact].reset()
             WBID.contact_tasks[foot_in_contact].reset()
-            WBID.wrench_limits[wrench_indexes_contact[0]].setWrenchLimits(np.array([0.0, 0.0, 3.0]), np.array([1000.0, 1000.0, 1000.0]),)
-            WBID.wrench_limits[wrench_indexes_contact[1]].setWrenchLimits(np.array([0.0, 0.0, 3.0]), np.array([1000.0, 1000.0, 1000.0]),)
+            WBID.wrench_limits[wrench_indexes_contact[0]].setWrenchLimits(np.array([0.0, 0.0, 10.0]), np.array([1000.0, 1000.0, 1000.0]))
+            WBID.wrench_limits[wrench_indexes_contact[1]].setWrenchLimits(np.array([0.0, 0.0, 10.0]), np.array([1000.0, 1000.0, 1000.0]))
 
             # Swing related                        
             WBID.contact_tasks[foot_in_swing].setActive(False)
@@ -248,7 +248,7 @@ class G1MujocoSimulation:
             swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc = WBID.swing_tasks[foot_in_swing].getReference()
             
             # Maximum swing height
-            max_swing_height = 0.05
+            max_swing_height = 0.02
 
             # Calculate swing progress (0.0 to 1.0)
             cycle_progress = (self.sim_time - self.start_swing_time) / self.swing_duration
@@ -304,10 +304,6 @@ class G1MujocoSimulation:
         base_linear_velocity_local = w_Rot_b.T @ self.data.qvel[0:3]
         joints_velocity_local = np.concatenate([base_linear_velocity_local, self.data.qvel[3:]])
         WBID.updateModel(permuted_qpos, joints_velocity_local)
-        
-        #### Maybe another way to get the CoM
-        # com_position_curr = data.comPos
-        # com_linear_velocity_curr = data.comVel 
         
         # Publish the current state
         permuted_qpos = self.permute_muj_to_xbi(self.data.qpos)
