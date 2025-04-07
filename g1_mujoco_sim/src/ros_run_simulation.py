@@ -248,7 +248,7 @@ class G1MujocoSimulation:
             swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc = WBID.swing_tasks[foot_in_swing].getReference()
             
             # Maximum swing height
-            max_swing_height = 0.02
+            max_swing_height = 0.05
 
             # Calculate swing progress (0.0 to 1.0)
             cycle_progress = (self.sim_time - self.start_swing_time) / self.swing_duration
