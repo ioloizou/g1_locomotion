@@ -52,7 +52,7 @@ class WholeBodyID:
 
         # Set CoM tracking task
         self.com = CoM(self.model, self.variables.getVariable("qddot"))
-        com_gain = 2.
+        com_gain = 3.
         com_Kp = np.eye(3) * 100. * com_gain
         self.com.setKp(com_Kp)
         com_Kd = np.diag([30., 30., 50.]) * com_gain
@@ -67,7 +67,7 @@ class WholeBodyID:
         self.base = Cartesian(
             "base", self.model, "world", "pelvis", self.variables.getVariable("qddot")
         )
-        base_gain = 1.
+        base_gain = 2.
         base_Kp = np.diag([1., 1., 1., 10., 10., 20.]) * base_gain
         self.base.setKp(base_Kp)
         base_Kd = np.diag([1., 1., 1., 50., 50., 50.]) * base_gain
@@ -108,7 +108,7 @@ class WholeBodyID:
                 )
             )
             self.swing_tasks[-1].setLambda(1., 1.)
-            swing_gain = 2.
+            swing_gain = 4.
             swing_Kp = np.diag([350., 350., 560., 70., 70., 70.]) * swing_gain
             swing_Kd = np.diag([10., 10., 17., 7., 7., 7.]) * swing_gain
             self.swing_tasks[-1].setKp(swing_Kp)
@@ -125,7 +125,7 @@ class WholeBodyID:
                     self.variables.getVariable(contact_frame))
             )
 
-        posture_gain = 10.
+        posture_gain = 60.
         posture = Postural(self.model, self.variables.getVariable("qddot"))
         posture_Kp = np.eye(self.model.nv) * 2. * posture_gain
         posture.setKp(posture_Kp)
@@ -167,7 +167,7 @@ class WholeBodyID:
         
         for i in range(len(self.cartesian_contact_task_frames)):
             self.contact_tasks[i].setLambda(300.0, 20.)
-            self.stack = self.stack + 3.0 * (self.contact_tasks[i]) + 0.8*self.swing_tasks[i]
+            self.stack = self.stack + 3.0 * (self.contact_tasks[i]) + 2.*self.swing_tasks[i]
 
         # Task for factual - fdesired
         self.wrench_tasks = list()
@@ -271,7 +271,6 @@ class WholeBodyID:
 
             for i in range(len(self.contact_frames)):
                 self.wrench_tasks[i].setReference(u_opt0[i*3:i*3+3])
-                # setDesiredForce(self.wrench_tasks[i], u_opt0[i*3:i*3+3], self.variables.getVariable(self.contact_frames[i]))
 
     def solveQP(self):
         self.x = self.solver.solve()

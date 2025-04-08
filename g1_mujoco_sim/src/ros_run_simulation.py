@@ -248,7 +248,7 @@ class G1MujocoSimulation:
             swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc = WBID.swing_tasks[foot_in_swing].getReference()
             
             # Maximum swing height
-            max_swing_height = 0.02
+            max_swing_height = 0.01
 
             # Calculate swing progress (0.0 to 1.0)
             cycle_progress = (self.sim_time - self.start_swing_time) / self.swing_duration
@@ -310,11 +310,11 @@ class G1MujocoSimulation:
         # Maybe I need the torso orientation not the floating base
         
         # World Frame
-        base_orientation_curr = tf.transformations.euler_from_matrix(w_Rot_b @ WBID.model.getPose("torso_link").linear)
+        base_orientation_curr = tf.transformations.euler_from_matrix(w_Rot_b @ WBID.model.getPose("pelvis").linear)
         # World Frame
         com_position_curr = WBID.model.getCOM()
         # Local Frame -> World Frame
-        base_angular_velocity_curr = w_Rot_b @ WBID.model.getVelocityTwist("torso_link")[3:6]
+        base_angular_velocity_curr = w_Rot_b @ WBID.model.getVelocityTwist("pelvis")[3:6]
         # Local Frame -> World Frame
         com_linear_velocity_curr =  w_Rot_b @ WBID.model.getCOMJacobian() @ joints_velocity_local
 
