@@ -14,6 +14,7 @@ from g1_msgs.msg import SRBD_state, ContactPoint
 
 from config import q_init
 from wbid import WholeBodyID
+import viz
 
 def publish_current_state(pub_srbd, 
                           srbd_state_msg,
@@ -106,7 +107,12 @@ class G1MujocoSimulation:
         self.data = mujoco.MjData(self.model)
 
         # Set initial joint configuration
-        self.data.qpos = self.permute_muj_to_xbi(q_init)
+        #self.data.qpos = self.permute_muj_to_xbi(q_init)
+        self.data.qpos = q_init.copy()
+        self.data.qpos[3] = q_init[6]
+        self.data.qpos[4] = q_init[3]
+        self.data.qpos[5] = q_init[4]
+        self.data.qpos[6] = q_init[5]
         
         # Set mujoco timestep
         self.model.opt.timestep = 0.001  # Set the simulation timestep
@@ -115,6 +121,9 @@ class G1MujocoSimulation:
 
         # Create viewer
         self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
+
+        # Setup rviz
+        self.rviz_srbd_full = viz.RvizSrbdFullBody(self.urdf, ["left_foot_line_contact_lower", "left_foot_line_contact_upper", "right_foot_line_contact_lower", "right_foot_line_contact_upper"])
 
         # Add simulation time publisher
         self.pub_sim_time = rospy.Publisher("/simulation_time", Clock, queue_size=10)
@@ -154,8 +163,10 @@ class G1MujocoSimulation:
         """Convert mujoco qpos to xbi qpos."""
         # Place the 4th element at the 7th position
         xbi_qpos_perm = xbi_qpos.copy()
+        xbi_qpos_perm[3] = xbi_qpos[4]
+        xbi_qpos_perm[4] = xbi_qpos[5]
+        xbi_qpos_perm[5] = xbi_qpos[6]
         xbi_qpos_perm[6] = xbi_qpos[3]
-        xbi_qpos_perm[3] = xbi_qpos[6]
         return xbi_qpos_perm
        
     def sim_step(self, pub_srbd, srbd_state_msg, contact_point_msg):
@@ -186,7 +197,7 @@ class G1MujocoSimulation:
         w_Rot_b = tf.transformations.quaternion_matrix(quat)[0:3, 0:3]
         base_linear_velocity_local = w_Rot_b.T @ self.data.qvel[0:3]
         joints_velocity_local = np.concatenate([base_linear_velocity_local, self.data.qvel[3:]])
-
+        
         WBID.updateModel(permuted_qpos, joints_velocity_local)
         
         ###################################
@@ -306,16 +317,16 @@ class G1MujocoSimulation:
         WBID.updateModel(permuted_qpos, joints_velocity_local)
         
         # Publish the current state
-        permuted_qpos = self.permute_muj_to_xbi(self.data.qpos)
+        #permuted_qpos = self.permute_muj_to_xbi(self.data.qpos)
         # Maybe I need the torso orientation not the floating base
         
         # World Frame
         base_orientation_curr = tf.transformations.euler_from_matrix(WBID.model.getPose("pelvis").linear)
         # World Frame
         com_position_curr = WBID.model.getCOM()
-        # Local Frame -> World Frame
+        # World Frame
         base_angular_velocity_curr = WBID.model.getVelocityTwist("pelvis")[3:6]
-        # Local Frame -> World Frame
+        # World Frame
         com_linear_velocity_curr = WBID.model.getCOMJacobian() @ joints_velocity_local
 
         # Get the forces from QP to publish
@@ -330,6 +341,18 @@ class G1MujocoSimulation:
                               WBID.contact_forces,
                               self.sim_time
                               )
+        
+        self.rviz_srbd_full.publishJointState(self.sim_time, WBID.model.getJointPosition())
+
+        # for i, contact_frame in enumerate(WBID.contact_frames):
+        # #     # T = WBID.model.getPose(contact_frame)
+        # #     # f_local = T.linear.transpose() @ WBID.contact_forces[contact_frame]
+        #     print("WBID.contact_forces[contact_frame]\n", WBID.contact_forces[i])
+        #     print("self.sim_time\n", self.sim_time)
+        #     print("contact_frame\n", contact_frame)
+        #     # exit()
+        #     self.rviz_srbd_full.publishContactForce(0, 3, "hi")
+
 
         # Publish the simulation time
         sim_time_msg = Clock()

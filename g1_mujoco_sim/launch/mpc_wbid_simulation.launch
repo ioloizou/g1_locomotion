@@ -4,4 +4,16 @@
 
   <!-- Launch MPC to WBID node -->
   <node name="mpc_to_wbid" pkg="g1_mpc" type="mpc_to_wbid_node" output="screen" />
+
+  <!-- Send the g1 robot XML to param server -->
+  <param name="robot_description" textfile="$(find g1_description)/g1_23dof.urdf"/>
+  
+  <!-- Launch robot state publisher -->
+  <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen" >
+      <param name="publish_frequency" type="double" value="250.0" />
+  </node> 
+
+  <!-- Launch the single rigid body and full body visualization in rviz -->
+  <node type="rviz" name="rviz" pkg="rviz" args="-d $(find g1_mujoco_sim)/g1_srbd_full.rviz" />
+  
 </launch>

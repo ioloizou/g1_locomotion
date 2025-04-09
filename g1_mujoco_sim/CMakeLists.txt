@@ -23,11 +23,13 @@ catkin_install_python(PROGRAMS
   src/ros_run_simulation.py
   src/config.py
   src/wbid.py
+  src/viz.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 install(DIRECTORY 
   src/ 
   launch/
+  config/
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )

@@ -1,3 +1,4 @@
+# pinocchio convention
 q_init = [
 	# floating base
 	0.0,
