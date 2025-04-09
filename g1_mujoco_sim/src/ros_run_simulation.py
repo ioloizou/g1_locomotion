@@ -282,7 +282,7 @@ class G1MujocoSimulation:
         ###################################
         
         WBID.stack.update()
-        WBID.setReference(self.sim_time, self.x_opt1, self.u_opt0)
+        WBID.setReference(self.sim_time, self.x_opt1, self.u_opt0, foot_positions_curr)
         WBID.solveQP()
 
         
@@ -310,13 +310,13 @@ class G1MujocoSimulation:
         # Maybe I need the torso orientation not the floating base
         
         # World Frame
-        base_orientation_curr = tf.transformations.euler_from_matrix(w_Rot_b @ WBID.model.getPose("pelvis").linear)
+        base_orientation_curr = tf.transformations.euler_from_matrix(WBID.model.getPose("pelvis").linear)
         # World Frame
         com_position_curr = WBID.model.getCOM()
         # Local Frame -> World Frame
-        base_angular_velocity_curr = w_Rot_b @ WBID.model.getVelocityTwist("pelvis")[3:6]
+        base_angular_velocity_curr = WBID.model.getVelocityTwist("pelvis")[3:6]
         # Local Frame -> World Frame
-        com_linear_velocity_curr =  w_Rot_b @ WBID.model.getCOMJacobian() @ joints_velocity_local
+        com_linear_velocity_curr = WBID.model.getCOMJacobian() @ joints_velocity_local
 
         # Get the forces from QP to publish
         publish_current_state(pub_srbd,

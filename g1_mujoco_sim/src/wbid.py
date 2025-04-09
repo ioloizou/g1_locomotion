@@ -52,7 +52,7 @@ class WholeBodyID:
 
         # Set CoM tracking task
         self.com = CoM(self.model, self.variables.getVariable("qddot"))
-        com_gain = 3.
+        com_gain = 2.
         com_Kp = np.eye(3) * 100. * com_gain
         self.com.setKp(com_Kp)
         com_Kd = np.diag([30., 30., 50.]) * com_gain
@@ -67,7 +67,7 @@ class WholeBodyID:
         self.base = Cartesian(
             "base", self.model, "world", "pelvis", self.variables.getVariable("qddot")
         )
-        base_gain = 2.
+        base_gain = 1.
         base_Kp = np.diag([1., 1., 1., 10., 10., 20.]) * base_gain
         self.base.setKp(base_Kp)
         base_Kd = np.diag([1., 1., 1., 50., 50., 50.]) * base_gain
@@ -108,7 +108,7 @@ class WholeBodyID:
                 )
             )
             self.swing_tasks[-1].setLambda(1., 1.)
-            swing_gain = 4.
+            swing_gain = 1.
             swing_Kp = np.diag([350., 350., 560., 70., 70., 70.]) * swing_gain
             swing_Kd = np.diag([10., 10., 17., 7., 7., 7.]) * swing_gain
             self.swing_tasks[-1].setKp(swing_Kp)
@@ -125,7 +125,7 @@ class WholeBodyID:
                     self.variables.getVariable(contact_frame))
             )
 
-        posture_gain = 60.
+        posture_gain = 40.
         posture = Postural(self.model, self.variables.getVariable("qddot"))
         posture_Kp = np.eye(self.model.nv) * 2. * posture_gain
         posture.setKp(posture_Kp)
@@ -167,7 +167,7 @@ class WholeBodyID:
         
         for i in range(len(self.cartesian_contact_task_frames)):
             self.contact_tasks[i].setLambda(300.0, 20.)
-            self.stack = self.stack + 3.0 * (self.contact_tasks[i]) + 2.*self.swing_tasks[i]
+            self.stack = self.stack + 3.0 * (self.contact_tasks[i]) + 1.*self.swing_tasks[i]
 
         # Task for factual - fdesired
         self.wrench_tasks = list()
@@ -226,7 +226,7 @@ class WholeBodyID:
         self.model.setJointVelocity(dq)
         self.model.update()
 
-    def setReference(self, t, x_opt1=None, u_opt0=None):
+    def setReference(self, t, x_opt1=None, u_opt0=None, foot_positions_curr=None):
         if x_opt1 is None:
             alpha = 0.04
             self.com_ref[0] = self.com0[0] 
@@ -255,19 +255,40 @@ class WholeBodyID:
             angular_velocity = x_opt1[6:9]
             velocity = np.hstack((linear_velocity, angular_velocity))
             
-            # # Pass the updated homogeneous transformation.
-            self.base.setReference(base_affine[0], velocity)
-            # CoM position, CoM velocity, CoM acceleration references 
+            # Since i use in MPC the torso inertia, 
+            inertia_torso = np.array([
+                [3.20564e-1, 4.35027e-06, 0.425526e-1],
+                [4.35027e-06, 3.05015e-1, -0.00065082e-1],
+                [0.425526e-1, -0.00065082e-1, 0.552353e-1]
+            ])
+
+            # If i turn i need to rotate it based on yaw
+            inertia_torso_inv = np.linalg.inv(inertia_torso)
+            
+            r = np.array(foot_positions_curr) - np.tile(x_opt1[3:6], (4,1))
+            
+            sum_r_cross_omega = np.zeros((1, 3))
+            for i in range(4):
+                sum_r_cross_omega = sum_r_cross_omega + np.cross(r[i, :], x_opt1[6:9])
+
+            # The linear is just to satisfy opensot since is omitted in the stack
+            linear_acceleration_reference = np.zeros((3,1))
+            angular_acceleration_reference = inertia_torso_inv @ sum_r_cross_omega.T
+
+            acceleration_reference = np.vstack((linear_acceleration_reference, angular_acceleration_reference)) 
+
+            # Pass the updated homogeneous transformation.
+            self.base.setReference(base_affine[0], velocity, acceleration_reference)
             
             # Calculate from MPC result
             gravity = np.array([0, 0, -9.80665])
 
             # The ending vector is 3,1 and all the elements are summed with every third element from that element from u_opt0
             sum_forces = np.sum(np.reshape(u_opt0, (3, 4)), axis=1)
-            acceleration_reference = sum_forces/self.model.getMass() + gravity
+            linear_acceleration_reference = sum_forces/self.model.getMass() + gravity
 
-            # acceleration_reference = np.zeros(3)
-            self.com.setReference(x_opt1[3:6], x_opt1[9:12], acceleration_reference)
+            # linear_acceleration_reference = np.zeros(3)
+            self.com.setReference(x_opt1[3:6], x_opt1[9:12], linear_acceleration_reference)
 
             for i in range(len(self.contact_frames)):
                 self.wrench_tasks[i].setReference(u_opt0[i*3:i*3+3])
