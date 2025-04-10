@@ -1,14 +1,14 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <root>
  <tabbed_widget parent="main_window" name="Main Window">
-  <Tab tab_name="States" containers="1">
+  <Tab containers="1" tab_name="States">
    <Container>
-    <DockSplitter sizes="0.50055;0.49945" orientation="-" count="2">
-     <DockSplitter sizes="0.5;0.5" orientation="|" count="2">
-      <DockSplitter sizes="0.5;0.5" orientation="-" count="2">
+    <DockSplitter orientation="-" count="2" sizes="0.50055;0.49945">
+     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
+      <DockSplitter orientation="-" count="2" sizes="0.5;0.5">
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="-0.015569" left="1743095092.838370" top="0.612155"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296902.551867" bottom="0.000606" left="1744296893.284782" top="0.681342"/>
          <limitY/>
          <curve color="#bcbd22" name="/mpc_solution/position/x"/>
          <curve color="#d62728" name="/mpc_solution/position/y"/>
@@ -16,8 +16,8 @@
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="0.000253" left="1743095092.838370" top="0.015309"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296902.551867" bottom="-0.417464" left="1744296893.284782" top="0.044019"/>
          <limitY/>
          <curve color="#ff7f0e" name="/mpc_solution/linear_velocity/x"/>
          <curve color="#f14cc1" name="/mpc_solution/linear_velocity/y"/>
@@ -25,10 +25,10 @@
         </plot>
        </DockArea>
       </DockSplitter>
-      <DockSplitter sizes="0.5;0.5" orientation="-" count="2">
+      <DockSplitter orientation="-" count="2" sizes="0.5;0.5">
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="-0.015578" left="1743095092.838370" top="0.612150"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296902.551867" bottom="0.009040" left="1744296893.284782" top="0.671434"/>
          <limitY/>
          <curve color="#9467bd" name="/srbd_current/position/x"/>
          <curve color="#17becf" name="/srbd_current/position/y"/>
@@ -36,8 +36,8 @@
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="-0.002161" left="1743095092.838370" top="0.000912"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296902.551867" bottom="-0.184781" left="1744296893.284782" top="0.699598"/>
          <limitY/>
          <curve color="#1f77b4" name="/srbd_current/linear_velocity/x"/>
          <curve color="#d62728" name="/srbd_current/linear_velocity/y"/>
@@ -46,11 +46,11 @@
        </DockArea>
       </DockSplitter>
      </DockSplitter>
-     <DockSplitter sizes="0.502506;0.497494" orientation="|" count="2">
-      <DockSplitter sizes="0.501104;0.498896" orientation="-" count="2">
+     <DockSplitter orientation="|" count="2" sizes="0.502506;0.497494">
+      <DockSplitter orientation="-" count="2" sizes="0.501104;0.498896">
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="-0.008881" left="1743095092.838370" top="-0.002198"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296902.551867" bottom="-0.044869" left="1744296893.284782" top="0.035802"/>
          <limitY/>
          <curve color="#1ac938" name="/mpc_solution/orientation/x"/>
          <curve color="#ff7f0e" name="/mpc_solution/orientation/y"/>
@@ -58,8 +58,8 @@
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="0.000041" left="1743095092.838370" top="0.101065"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296902.551867" bottom="-1.707590" left="1744296893.284782" top="0.264920"/>
          <limitY/>
          <curve color="#d62728" name="/mpc_solution/angular_velocity/x"/>
          <curve color="#1ac938" name="/mpc_solution/angular_velocity/y"/>
@@ -67,10 +67,10 @@
         </plot>
        </DockArea>
       </DockSplitter>
-      <DockSplitter sizes="0.501104;0.498896" orientation="-" count="2">
+      <DockSplitter orientation="-" count="2" sizes="0.501104;0.498896">
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="-0.008796" left="1743095092.838370" top="-0.002176"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296902.551867" bottom="-0.021856" left="1744296893.284782" top="0.104476"/>
          <limitY/>
          <curve color="#17becf" name="/srbd_current/orientation/x"/>
          <curve color="#bcbd22" name="/srbd_current/orientation/y"/>
@@ -78,8 +78,8 @@
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="-0.031540" left="1743095092.838370" top="0.023643"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296902.551867" bottom="-1.739213" left="1744296893.284782" top="0.330589"/>
          <limitY/>
          <curve color="#ff7f0e" name="/srbd_current/angular_velocity/x"/>
          <curve color="#f14cc1" name="/srbd_current/angular_velocity/y"/>
@@ -91,14 +91,14 @@
     </DockSplitter>
    </Container>
   </Tab>
-  <Tab tab_name="Contact Forces" containers="1">
+  <Tab containers="1" tab_name="Contact Forces">
    <Container>
-    <DockSplitter sizes="1" orientation="-" count="1">
-     <DockSplitter sizes="0.5;0.5" orientation="|" count="2">
-      <DockSplitter sizes="0.50055;0.49945" orientation="-" count="2">
+    <DockSplitter orientation="-" count="1" sizes="1">
+     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
+      <DockSplitter orientation="-" count="2" sizes="0.50055;0.49945">
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="-2.622508" left="1743095092.838370" top="114.256962"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296902.551867" bottom="-0.224217" left="1744296897.556013" top="0.033265"/>
          <limitY/>
          <curve color="#f14cc1" name="/mpc_solution/contacts[0]/force/x"/>
          <curve color="#9467bd" name="/mpc_solution/contacts[0]/force/y"/>
@@ -106,8 +106,8 @@
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="-2.719480" left="1743095092.838370" top="119.074473"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296902.551867" bottom="-4.833028" left="1744296897.556013" top="58.918327"/>
          <limitY/>
          <curve color="#d62728" name="/mpc_solution/contacts[2]/force/x"/>
          <curve color="#1ac938" name="/mpc_solution/contacts[2]/force/y"/>
@@ -115,10 +115,10 @@
         </plot>
        </DockArea>
       </DockSplitter>
-      <DockSplitter sizes="0.50055;0.49945" orientation="-" count="2">
+      <DockSplitter orientation="-" count="2" sizes="0.50055;0.49945">
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="-1.825124" left="1743095092.838370" top="81.264441"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296902.551867" bottom="-0.213832" left="1744296897.556013" top="0.034177"/>
          <limitY/>
          <curve color="#17becf" name="/mpc_solution/contacts[1]/force/x"/>
          <curve color="#bcbd22" name="/mpc_solution/contacts[1]/force/y"/>
@@ -126,8 +126,8 @@
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="-1.710732" left="1743095092.838370" top="81.715448"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296902.551867" bottom="-3.326141" left="1744296897.556013" top="10.470040"/>
          <limitY/>
          <curve color="#f14cc1" name="/mpc_solution/contacts[3]/force/x"/>
          <curve color="#9467bd" name="/mpc_solution/contacts[3]/force/y"/>
@@ -139,34 +139,40 @@
     </DockSplitter>
    </Container>
   </Tab>
-  <Tab tab_name="Contact Positions" containers="1">
+  <Tab containers="1" tab_name="Contact Positions">
    <Container>
-    <DockSplitter sizes="1" orientation="-" count="1">
-     <DockSplitter sizes="0.5;0.5" orientation="|" count="2">
-      <DockSplitter sizes="0.50055;0.49945" orientation="-" count="2">
+    <DockSplitter orientation="-" count="1" sizes="1">
+     <DockSplitter orientation="|" count="2" sizes="0.56203;0.43797">
+      <DockSplitter orientation="-" count="2" sizes="0.50055;0.49945">
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="-0.033903" left="1743095092.838370" top="0.121864"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296897.939751" bottom="0.120146" left="1744296890.914724" top="0.132745"/>
          <limitY/>
          <curve color="#bcbd22" name="/srbd_current/contacts[0]/position/x"/>
          <curve color="#1f77b4" name="/srbd_current/contacts[0]/position/y"/>
          <curve color="#d62728" name="/srbd_current/contacts[0]/position/z"/>
+         <curve color="#1ac938" name="/feet_ref_pos/feet_positions[0]/position/x"/>
+         <curve color="#ff7f0e" name="/feet_ref_pos/feet_positions[0]/position/y"/>
+         <curve color="#f14cc1" name="/feet_ref_pos/feet_positions[0]/position/z"/>
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="-0.121366" left="1743095092.838370" top="-0.023327"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296897.939751" bottom="-0.234031" left="1744296890.914724" top="0.130653"/>
          <limitY/>
          <curve color="#9467bd" name="/srbd_current/contacts[2]/position/x"/>
          <curve color="#17becf" name="/srbd_current/contacts[2]/position/y"/>
          <curve color="#bcbd22" name="/srbd_current/contacts[2]/position/z"/>
+         <curve color="#ff7f0e" name="/feet_ref_pos/feet_positions[1]/position/x"/>
+         <curve color="#f14cc1" name="/feet_ref_pos/feet_positions[1]/position/y"/>
+         <curve color="#9467bd" name="/feet_ref_pos/feet_positions[1]/position/z"/>
         </plot>
        </DockArea>
       </DockSplitter>
-      <DockSplitter sizes="0.50055;0.49945" orientation="-" count="2">
+      <DockSplitter orientation="-" count="2" sizes="0.50055;0.49945">
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="-0.030128" left="1743095092.838370" top="0.144719"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296897.939751" bottom="-0.030949" left="1744296890.914724" top="0.180367"/>
          <limitY/>
          <curve color="#1ac938" name="/srbd_current/contacts[1]/position/x"/>
          <curve color="#ff7f0e" name="/srbd_current/contacts[1]/position/y"/>
@@ -174,8 +180,8 @@
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="-0.125392" left="1743095092.838370" top="0.147007"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296897.939751" bottom="-0.257394" left="1744296890.914724" top="0.096593"/>
          <limitY/>
          <curve color="#1f77b4" name="/srbd_current/contacts[3]/position/x"/>
          <curve color="#d62728" name="/srbd_current/contacts[3]/position/y"/>
@@ -187,40 +193,40 @@
     </DockSplitter>
    </Container>
   </Tab>
-  <Tab tab_name="Contact Active" containers="1">
+  <Tab containers="1" tab_name="Contact Active">
    <Container>
-    <DockSplitter sizes="1" orientation="-" count="1">
-     <DockSplitter sizes="0.5;0.5" orientation="|" count="2">
-      <DockSplitter sizes="0.50055;0.49945" orientation="-" count="2">
+    <DockSplitter orientation="-" count="1" sizes="1">
+     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
+      <DockSplitter orientation="-" count="2" sizes="0.50055;0.49945">
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="0.900000" left="1743095092.838370" top="1.100000"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296902.551867" bottom="-0.100000" left="1744296893.284782" top="0.100000"/>
          <limitY/>
          <curve color="#d62728" name="/mpc_solution/contacts[0]/active"/>
          <curve color="#1ac938" name="/mpc_solution/contacts[1]/active"/>
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="0.900000" left="1743095092.838370" top="1.100000"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296902.551867" bottom="0.900000" left="1744296893.284782" top="1.100000"/>
          <limitY/>
          <curve color="#1f77b4" name="/mpc_solution/contacts[2]/active"/>
          <curve color="#d62728" name="/mpc_solution/contacts[3]/active"/>
         </plot>
        </DockArea>
       </DockSplitter>
-      <DockSplitter sizes="0.50055;0.49945" orientation="-" count="2">
+      <DockSplitter orientation="-" count="2" sizes="0.50055;0.49945">
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="-0.100000" left="1743095092.838370" top="0.100000"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296902.551867" bottom="-0.100000" left="1744296893.284782" top="0.100000"/>
          <limitY/>
          <curve color="#1ac938" name="/srbd_current/contacts[0]/active"/>
          <curve color="#ff7f0e" name="/srbd_current/contacts[1]/active"/>
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-         <range right="1743095097.836562" bottom="-0.100000" left="1743095092.838370" top="0.100000"/>
+        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+         <range right="1744296902.551867" bottom="-0.100000" left="1744296893.284782" top="0.100000"/>
          <limitY/>
          <curve color="#f14cc1" name="/srbd_current/contacts[2]/active"/>
          <curve color="#9467bd" name="/srbd_current/contacts[3]/active"/>
@@ -231,26 +237,26 @@
     </DockSplitter>
    </Container>
   </Tab>
-  <Tab tab_name="XY CoM" containers="1">
+  <Tab containers="1" tab_name="XY CoM">
    <Container>
-    <DockSplitter sizes="1" orientation="-" count="1">
+    <DockSplitter orientation="-" count="1" sizes="1">
      <DockArea name="...">
-      <plot style="Lines" mode="XYPlot" flip_x="false" flip_y="false">
-       <range right="0.049065" bottom="-0.000637" left="0.048659" top="-0.000417"/>
+      <plot mode="XYPlot" flip_x="false" flip_y="false" style="Lines">
+       <range right="0.045122" bottom="0.121724" left="0.016123" top="0.137318"/>
        <limitY/>
-       <curve curve_x="/mpc_solution/position/x" curve_y="/mpc_solution/position/y" color="#1f77b4" name="/mpc_solution/position/[x;y]"/>
-       <curve curve_x="/srbd_current/position/x" curve_y="/srbd_current/position/y" color="#9467bd" name="/srbd_current/position/[x;y]"/>
+       <curve curve_y="/mpc_solution/position/y" curve_x="/mpc_solution/position/x" color="#1f77b4" name="/mpc_solution/position/[x;y]"/>
+       <curve curve_y="/srbd_current/position/y" curve_x="/srbd_current/position/x" color="#9467bd" name="/srbd_current/position/[x;y]"/>
       </plot>
      </DockArea>
     </DockSplitter>
    </Container>
   </Tab>
-  <Tab tab_name="Solving Times" containers="1">
+  <Tab containers="1" tab_name="Solving Times">
    <Container>
-    <DockSplitter sizes="1" orientation="-" count="1">
+    <DockSplitter orientation="-" count="1" sizes="1">
      <DockArea name="...">
-      <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
-       <range right="1743095097.836562" bottom="-0.140477" left="1743095092.838370" top="5.789393"/>
+      <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
+       <range right="1744296902.551922" bottom="-0.560744" left="1744296893.284926" top="23.092720"/>
        <limitY/>
        <curve color="#17becf" name="/mpc_statistics/full/statistics[4]/value"/>
        <curve color="#bcbd22" name="/wbid_statistics/full/statistics[0]/value"/>
@@ -259,7 +265,7 @@
     </DockSplitter>
    </Container>
   </Tab>
-  <currentTabIndex index="0"/>
+  <currentTabIndex index="2"/>
  </tabbed_widget>
  <use_relative_time_offset enabled="0"/>
  <!-- - - - - - - - - - - - - - - -->
@@ -301,6 +307,7 @@
  </Plugins>
  <!-- - - - - - - - - - - - - - - -->
  <previouslyLoaded_Datafiles/>
+ <previouslyLoaded_Streamer name="ROS Topic Subscriber"/>
  <!-- - - - - - - - - - - - - - - -->
  <customMathEquations/>
  <snippets/>

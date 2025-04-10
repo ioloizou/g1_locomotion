@@ -52,7 +52,7 @@ class WholeBodyID:
 
         # Set CoM tracking task
         self.com = CoM(self.model, self.variables.getVariable("qddot"))
-        com_gain = 2.
+        com_gain = 4.
         com_Kp = np.eye(3) * 100. * com_gain
         self.com.setKp(com_Kp)
         com_Kd = np.diag([30., 30., 50.]) * com_gain
@@ -67,7 +67,7 @@ class WholeBodyID:
         self.base = Cartesian(
             "base", self.model, "world", "pelvis", self.variables.getVariable("qddot")
         )
-        base_gain = 1.
+        base_gain = 12.
         base_Kp = np.diag([1., 1., 1., 10., 10., 20.]) * base_gain
         self.base.setKp(base_Kp)
         base_Kd = np.diag([1., 1., 1., 50., 50., 50.]) * base_gain
@@ -108,8 +108,8 @@ class WholeBodyID:
                 )
             )
             self.swing_tasks[-1].setLambda(1., 1.)
-            swing_gain = 1.
-            swing_Kp = np.diag([350., 350., 560., 70., 70., 70.]) * swing_gain
+            swing_gain = 4.
+            swing_Kp = np.diag([550., 750., 560., 70., 70., 70.]) * swing_gain
             swing_Kd = np.diag([10., 10., 17., 7., 7., 7.]) * swing_gain
             self.swing_tasks[-1].setKp(swing_Kp)
             self.swing_tasks[-1].setKd(swing_Kd)
@@ -159,7 +159,7 @@ class WholeBodyID:
 
         min_force_weight = 1e-5
         # For the self.base task taking only the orientation part
-        self.stack = 1.0*self.com + 0.02*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]) + 0.3*angular_momentum + 0.005*req_qddot 
+        self.stack = 1.0*self.com + 0.4*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]) + 0.3*angular_momentum + 0.005*req_qddot 
         # self.stack += min_force_weight*req_forces_0 + min_force_weight*req_forces_1 + min_force_weight*req_forces_2 + min_force_weight*req_forces_3
         self.stack += 1e-8 * MinimizeVariable("min_torques", torques)
         # 
@@ -167,7 +167,7 @@ class WholeBodyID:
         
         for i in range(len(self.cartesian_contact_task_frames)):
             self.contact_tasks[i].setLambda(300.0, 20.)
-            self.stack = self.stack + 3.0 * (self.contact_tasks[i]) + 1.*self.swing_tasks[i]
+            self.stack = self.stack + 3.0 * (self.contact_tasks[i]) + 2.9*self.swing_tasks[i]
 
         # Task for factual - fdesired
         self.wrench_tasks = list()
@@ -256,14 +256,14 @@ class WholeBodyID:
             velocity = np.hstack((linear_velocity, angular_velocity))
             
             # Since i use in MPC the torso inertia, 
-            inertia_torso = np.array([
+            self.inertia_torso = np.array([
                 [3.20564e-1, 4.35027e-06, 0.425526e-1],
                 [4.35027e-06, 3.05015e-1, -0.00065082e-1],
                 [0.425526e-1, -0.00065082e-1, 0.552353e-1]
             ])
 
             # If i turn i need to rotate it based on yaw
-            inertia_torso_inv = np.linalg.inv(inertia_torso)
+            inertia_torso_inv = np.linalg.inv(self.inertia_torso)
             
             r = np.array(foot_positions_curr) - np.tile(x_opt1[3:6], (4,1))
             
@@ -276,7 +276,6 @@ class WholeBodyID:
             angular_acceleration_reference = inertia_torso_inv @ sum_r_cross_omega.T
 
             acceleration_reference = np.vstack((linear_acceleration_reference, angular_acceleration_reference)) 
-
             # Pass the updated homogeneous transformation.
             self.base.setReference(base_affine[0], velocity, acceleration_reference)
             

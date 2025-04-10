@@ -53,6 +53,11 @@ class RvizSrbdFullBody:
         self.w_T_com.header.frame_id = "world"
         self.w_T_com.child_frame_id = "srbd_com"
 
+        for i in range(len(contact_frames)):
+            self.w_T_c = TransformStamped()
+            self.w_T_c.header.frame_id = "world"
+            self.w_T_c.child_frame_id ="srbd_" + contact_frames[i]
+        
         self.force_msg = list()
         self.fpubs = list()
         for contact_frame in contact_frames:
@@ -95,7 +100,7 @@ class RvizSrbdFullBody:
         f_msg.wrench.torque.x = f_msg.wrench.torque.y = f_msg.wrench.torque.z = 0.
         pub = rospy.Publisher('force_' + frame, WrenchStamped, queue_size=10).publish(f_msg)
 
-    def SRBDViewer(self, I, srbd_msg, t, number_of_contacts):
+    def SRBDViewer(self, I, srbd_msg, t, contact_frames):
 
         w_T_com = TransformStamped()
         w_T_com.header.frame_id = "world"
@@ -118,6 +123,7 @@ class RvizSrbdFullBody:
         marker = Marker()
         marker.header.frame_id = "srbd_com"
         marker.header.stamp = t
+        marker.ns = "SRBD"
         marker.id = 0
         marker.type = Marker.SPHERE
         marker.action = Marker.ADD
@@ -133,22 +139,41 @@ class RvizSrbdFullBody:
 
         pub = rospy.Publisher('srbd_marker', Marker, queue_size=10).publish(marker)
 
-        marker_array = MarkerArray()
-        for i in range(0, number_of_contacts):
-            m = Marker()
-            m.header.frame_id = "c" + str(i)
-            m.header.stamp = t
-            m.ns = "SRBD"
-            m.id = i + 1
-            m.type = Marker.SPHERE
-            m.action = Marker.ADD
-            m.pose.position.x = marker.pose.position.y = marker.pose.position.z = 0.
-            m.pose.orientation.x = marker.pose.orientation.y = marker.pose.orientation.z = 0.
-            m.pose.orientation.w = 1.
-            m.scale.x = m.scale.y = m.scale.z = 0.04
-            m.color.a = 0.8
-            m.color.r = m.color.g = 0.0
-            m.color.b = 1.0
-            marker_array.markers.append(m)
+        # Need to publish from MPC still not ready
+        # marker_array = MarkerArray()
+        # for i, contact_frame in enumerate(contact_frames):
+        #     w_T_c = TransformStamped()
 
-        pub2 = rospy.Publisher('contacts', MarkerArray, queue_size=10).publish(marker_array)
+        #     try:
+        #         # print("foot position: ", srbd_msg.contacts[i].position.x, srbd_msg.contacts[i].position.y, srbd_msg.contacts[i].position.z)
+        #         w_T_c.transform.translation.x = srbd_msg.contacts[i].position.x
+        #         w_T_c.transform.translation.y = srbd_msg.contacts[i].position.y
+        #         w_T_c.transform.translation.z = srbd_msg.contacts[i].position.z
+        #         w_T_c.transform.rotation.x = 0.
+        #         w_T_c.transform.rotation.y = 0.
+        #         w_T_c.transform.rotation.z = 0.
+        #         w_T_c.transform.rotation.w = 1.
+        #         w_T_c.header.frame_id = "world"
+        #         w_T_c.child_frame_id = "srbd_" + contact_frame
+        #         w_T_c.header.stamp = t
+        #         self.broadcaster.sendTransformMessage(w_T_c)
+        #     except Exception as e:
+        #         print(e)
+
+        #     m = Marker()
+        #     m.header.frame_id = "srbd_" + contact_frame
+        #     m.header.stamp = t
+        #     m.ns = "SRBD"
+        #     m.id = i + 1
+        #     m.type = Marker.SPHERE
+        #     m.action = Marker.ADD
+        #     m.pose.position.x = marker.pose.position.y = marker.pose.position.z = 0.
+        #     m.pose.orientation.x = marker.pose.orientation.y = marker.pose.orientation.z = 0.
+        #     m.pose.orientation.w = 1.
+        #     m.scale.x = m.scale.y = m.scale.z = 0.04
+        #     m.color.a = 0.8
+        #     m.color.r = m.color.g = 0.0
+        #     m.color.b = 1.0
+        #     marker_array.markers.append(m)
+
+        # pub2 = rospy.Publisher('contacts', MarkerArray, queue_size=10).publish(marker_array)

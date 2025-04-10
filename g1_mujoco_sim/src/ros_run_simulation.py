@@ -10,12 +10,16 @@ import numpy as np
 from ttictoc import tic, toc
 from pal_statistics import StatisticsRegistry
 from rosgraph_msgs.msg import Clock
-from g1_msgs.msg import SRBD_state, ContactPoint
+from g1_msgs.msg import SRBD_state, ContactPoint, Feet_reference
 
 from config import q_init
 from wbid import WholeBodyID
 import viz
 
+# def publish_reference_foot_position(pub_foot_ref_pos,
+#                                     sim_time=0.0
+#                                     ):
+#     """"""
 def publish_current_state(pub_srbd, 
                           srbd_state_msg,
                           contact_point_msg, 
@@ -70,6 +74,47 @@ def publish_current_state(pub_srbd,
     
     pub_srbd.publish(srbd_state_msg)
 
+def publish_feet_reference(pub_reference_feet_position,
+                           feet_ref_pos_msg,
+                           foot,
+                           swing_task_reference_pose,
+                           foot_positions_curr):
+    # Reference pose for the swing foot to publish
+    feet_ref_pos_list = []
+    if foot == "left":    
+        foot_ref_pos = ContactPoint()
+        
+        foot_ref_pos.name = "right_foot_point_contact" 
+        foot_ref_pos.position.x = swing_task_reference_pose.translation[0]
+        foot_ref_pos.position.y = swing_task_reference_pose.translation[1]
+        foot_ref_pos.position.z = swing_task_reference_pose.translation[2]
+        
+        feet_ref_pos_list.append(foot_ref_pos)
+
+        foot_ref_pos.name = "left_foot_point_contact"
+        foot_ref_pos.position.x = foot_positions_curr[0, 0]
+        foot_ref_pos.position.y = foot_positions_curr[0, 1]
+        foot_ref_pos.position.z = foot_positions_curr[0, 2]
+        feet_ref_pos_list.append(foot_ref_pos)
+    elif foot == "right":
+        foot_ref_pos = ContactPoint()
+        foot_ref_pos.name = "left_foot_point_contact"
+        foot_ref_pos.position.x = swing_task_reference_pose.translation[0]
+        foot_ref_pos.position.y = swing_task_reference_pose.translation[1]
+        foot_ref_pos.position.z = swing_task_reference_pose.translation[2]
+
+        feet_ref_pos_list.append(foot_ref_pos)
+
+        foot_ref_pos.name = "right_foot_point_contact"
+        foot_ref_pos.position.x = foot_positions_curr[1, 0]
+        foot_ref_pos.position.y = foot_positions_curr[1, 1]
+        foot_ref_pos.position.z = foot_positions_curr[1, 2]
+
+    
+    feet_ref_pos_msg.header.stamp = rospy.Time.from_sec(self.sim_time)
+    feet_ref_pos_msg.header.frame_id = "world"
+    feet_ref_pos_msg.feet_positions = feet_ref_pos_list
+    pub_reference_feet_position.publish(feet_ref_pos_msg)
 
 def loadURDF(pkg_path):
     with open(
@@ -109,7 +154,6 @@ class G1MujocoSimulation:
         self.data = mujoco.MjData(self.model)
 
         # Set initial joint configuration
-        #self.data.qpos = self.permute_muj_to_xbi(q_init)
         self.data.qpos = q_init.copy()
         self.data.qpos[3] = q_init[6]
         self.data.qpos[4] = q_init[3]
@@ -173,7 +217,7 @@ class G1MujocoSimulation:
         xbi_qpos_perm[6] = xbi_qpos[3]
         return xbi_qpos_perm
        
-    def sim_step(self, pub_srbd, srbd_state_msg, contact_point_msg):
+    def sim_step(self, pub_srbd, pub_reference_feet_position, feet_ref_pos_msg, srbd_state_msg, contact_point_msg):
         """Perform a single simulation step."""
         
         tic()
@@ -281,7 +325,14 @@ class G1MujocoSimulation:
                 swing_task_reference_pose.translation += (0., 0., -delta_z)
                 WBID.swing_tasks[foot_in_swing].setReference(swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc)
                 rospy.loginfo(f'{foot} in contact, other foot swinging down, progress: {cycle_progress:.2f}')
-        
+            
+            # Publish the reference foot position
+            publish_feet_reference(pub_reference_feet_position,
+                                   feet_ref_pos_msg,
+                                   foot,
+                                   swing_task_reference_pose,
+                                   foot_positions_curr)
+
         if left_foot_active and right_foot_active:
             rospy.loginfo("Double support phase")
         elif left_foot_active:
@@ -354,7 +405,7 @@ class G1MujocoSimulation:
             self.rviz_srbd_full.publishContactForce(rospy.Time(self.sim_time), WBID.contact_forces[i], contact_frame)
 
 
-        self.rviz_srbd_full.SRBDViewer(WBID.inertia_torso, self.srbd_recieved, rospy.Time(self.sim_time), len(WBID.contact_frames))
+        self.rviz_srbd_full.SRBDViewer(WBID.inertia_torso, self.srbd_recieved, rospy.Time(self.sim_time), WBID.contact_frames)
 
         # Publish the simulation time
         sim_time_msg = Clock()
@@ -373,12 +424,15 @@ class G1MujocoSimulation:
         # Create a message for the SRBD state        
         srbd_state_msg = SRBD_state()
         contact_point_msg = ContactPoint()
+        feet_ref_pos_msg = Feet_reference()
 
         # Create a publisher for the SRBD state        
         pub_srbd = rospy.Publisher("/srbd_current", SRBD_state, queue_size=10)
 
         # Create a subscriber for the MPC solution - fixed by using the class method
         sub_mpc = rospy.Subscriber("/mpc_solution", SRBD_state, self.callback_mpc_solution)
+
+        pub_reference_feet_position = rospy.Publisher("/feet_ref_pos", Feet_reference, queue_size=10)
 
         # Create Registry for a topic
         self.registry = StatisticsRegistry("/wbid_statistics")
@@ -387,7 +441,7 @@ class G1MujocoSimulation:
 
         while self.running and not rospy.is_shutdown() and self.viewer.is_alive:
             # Get real time elapsed since last step
-            self.sim_step(pub_srbd, srbd_state_msg, contact_point_msg)
+            self.sim_step(pub_srbd, pub_reference_feet_position, feet_ref_pos_msg, srbd_state_msg, contact_point_msg)
             self.sim_time += self.sim_timestep
 
             # Render the current state
