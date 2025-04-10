@@ -344,14 +344,11 @@ class G1MujocoSimulation:
         
         self.rviz_srbd_full.publishJointState(self.sim_time, WBID.model.getJointPosition())
 
-        # for i, contact_frame in enumerate(WBID.contact_frames):
+        # I publish QP forces not SRBD forces
+        for i, contact_frame in enumerate(WBID.contact_frames):
         # #     # T = WBID.model.getPose(contact_frame)
         # #     # f_local = T.linear.transpose() @ WBID.contact_forces[contact_frame]
-        #     print("WBID.contact_forces[contact_frame]\n", WBID.contact_forces[i])
-        #     print("self.sim_time\n", self.sim_time)
-        #     print("contact_frame\n", contact_frame)
-        #     # exit()
-        #     self.rviz_srbd_full.publishContactForce(0, 3, "hi")
+            self.rviz_srbd_full.publishContactForce(rospy.Time(self.sim_time), WBID.contact_forces[i], contact_frame)
 
 
         # Publish the simulation time
