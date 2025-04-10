@@ -85,6 +85,8 @@ class G1MujocoSimulation:
         self.x_opt1 = np.zeros(13)  
         self.u_opt0 = np.zeros(12)
         self.contact_states = np.zeros(4)    
+
+        self.srbd_recieved = SRBD_state()
         
         # Add swing state tracking variables
         self.current_swing_foot = None
@@ -135,6 +137,8 @@ class G1MujocoSimulation:
         """
         Subscribe to the MPC solution and update the reference trajectory.
         """
+        self.srbd_recieved = msg
+
         # Unpack the MPC solution from the incoming message
         
         # Everything is in world frame
@@ -342,14 +346,15 @@ class G1MujocoSimulation:
                               self.sim_time
                               )
         
+        # Publish the joint state for rviz
         self.rviz_srbd_full.publishJointState(self.sim_time, WBID.model.getJointPosition())
 
-        # I publish QP forces not SRBD forces
+        # Publish QP forces not SRBD forces for rviz
         for i, contact_frame in enumerate(WBID.contact_frames):
-        # #     # T = WBID.model.getPose(contact_frame)
-        # #     # f_local = T.linear.transpose() @ WBID.contact_forces[contact_frame]
             self.rviz_srbd_full.publishContactForce(rospy.Time(self.sim_time), WBID.contact_forces[i], contact_frame)
 
+
+        self.rviz_srbd_full.SRBDViewer(WBID.inertia_torso, self.srbd_recieved, rospy.Time(self.sim_time), len(WBID.contact_frames))
 
         # Publish the simulation time
         sim_time_msg = Clock()

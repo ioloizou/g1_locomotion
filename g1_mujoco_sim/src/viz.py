@@ -41,11 +41,17 @@ class RvizSrbdFullBody:
         self.model = xbi.ModelInterface2(urdf)
         self.joint_state_msg.name = self.model.getJointNames()[1::]
 
-        self.broadcaster_joint_state = tf.TransformBroadcaster()
+        self.broadcaster = tf.TransformBroadcaster()
 
+        # For floating base of full body
         self.w_T_b = TransformStamped()
         self.w_T_b.header.frame_id = "world"
         self.w_T_b.child_frame_id = "pelvis"
+
+        # For single rigid body
+        self.w_T_com = TransformStamped()
+        self.w_T_com.header.frame_id = "world"
+        self.w_T_com.child_frame_id = "srbd_com"
 
         self.force_msg = list()
         self.fpubs = list()
@@ -76,7 +82,7 @@ class RvizSrbdFullBody:
         w_T_b.transform.rotation.z = q[5]
         w_T_b.transform.rotation.w = q[6]
 
-        self.broadcaster_joint_state.sendTransformMessage(w_T_b)
+        self.broadcaster.sendTransformMessage(w_T_b)
         pub.publish(self.joint_state_msg)
 
     def publishContactForce(self, t, f, frame):
@@ -89,42 +95,60 @@ class RvizSrbdFullBody:
         f_msg.wrench.torque.x = f_msg.wrench.torque.y = f_msg.wrench.torque.z = 0.
         pub = rospy.Publisher('force_' + frame, WrenchStamped, queue_size=10).publish(f_msg)
 
-    # def SRBDViewer(I, base_frame, t, number_of_contacts):
-    #     marker = Marker()
-    #     marker.header.frame_id = base_frame
-    #     marker.header.stamp = t
-    #     marker.ns = "SRBD"
-    #     marker.id = 0
-    #     marker.type = Marker.SPHERE
-    #     marker.action = Marker.ADD
-    #     marker.pose.position.x = marker.pose.position.y = marker.pose.position.z = 0.
-    #     marker.pose.orientation.x = marker.pose.orientation.y = marker.pose.orientation.z = 0.
-    #     marker.pose.orientation.w = 1.
-    #     a = I[0,0] + I[1,1] + I[2,2]
-    #     marker.scale.x = 0.5*(I[2,2] + I[1,1])/a
-    #     marker.scale.y = 0.5*(I[2,2] + I[0,0])/a
-    #     marker.scale.z = 0.5*(I[0,0] + I[1,1])/a
-    #     marker.color.a = 0.8
-    #     marker.color.r = marker.color.g = marker.color.b = 0.7
+    def SRBDViewer(self, I, srbd_msg, t, number_of_contacts):
 
-    #     pub = rospy.Publisher('box', Marker, queue_size=10).publish(marker)
+        w_T_com = TransformStamped()
+        w_T_com.header.frame_id = "world"
+        w_T_com.child_frame_id = "srbd_com"
+        w_T_com.header.stamp = t
 
-    #     marker_array = MarkerArray()
-    #     for i in range(0, number_of_contacts):
-    #         m = Marker()
-    #         m.header.frame_id = "c" + str(i)
-    #         m.header.stamp = t
-    #         m.ns = "SRBD"
-    #         m.id = i + 1
-    #         m.type = Marker.SPHERE
-    #         m.action = Marker.ADD
-    #         m.pose.position.x = marker.pose.position.y = marker.pose.position.z = 0.
-    #         m.pose.orientation.x = marker.pose.orientation.y = marker.pose.orientation.z = 0.
-    #         m.pose.orientation.w = 1.
-    #         m.scale.x = m.scale.y = m.scale.z = 0.04
-    #         m.color.a = 0.8
-    #         m.color.r = m.color.g = 0.0
-    #         m.color.b = 1.0
-    #         marker_array.markers.append(m)
+        w_T_com.transform.translation.x = srbd_msg.position.x
+        w_T_com.transform.translation.y = srbd_msg.position.y
+        w_T_com.transform.translation.z = srbd_msg.position.z
 
-    #     pub2 = rospy.Publisher('contacts', MarkerArray, queue_size=10).publish(marker_array)
+        # Get quaternion from euler angles
+        q = tf.transformations.quaternion_from_euler(srbd_msg.orientation.x, srbd_msg.orientation.y, srbd_msg.orientation.z)
+        w_T_com.transform.rotation.x = q[0]
+        w_T_com.transform.rotation.y = q[1]
+        w_T_com.transform.rotation.z = q[2]
+        w_T_com.transform.rotation.w = q[3]
+
+        self.broadcaster.sendTransformMessage(w_T_com)
+
+        marker = Marker()
+        marker.header.frame_id = "srbd_com"
+        marker.header.stamp = t
+        marker.id = 0
+        marker.type = Marker.SPHERE
+        marker.action = Marker.ADD
+        marker.pose.position.x = marker.pose.position.y = marker.pose.position.z = 0.
+        marker.pose.orientation.x = marker.pose.orientation.y = marker.pose.orientation.z = 0.
+        marker.pose.orientation.w = 1.
+        a = I[0,0] + I[1,1] + I[2,2]
+        marker.scale.x = 0.5*(I[2,2] + I[1,1])/a
+        marker.scale.y = 0.5*(I[2,2] + I[0,0])/a
+        marker.scale.z = 0.5*(I[0,0] + I[1,1])/a
+        marker.color.a = 0.6
+        marker.color.r = marker.color.g = marker.color.b = 0.7
+
+        pub = rospy.Publisher('srbd_marker', Marker, queue_size=10).publish(marker)
+
+        marker_array = MarkerArray()
+        for i in range(0, number_of_contacts):
+            m = Marker()
+            m.header.frame_id = "c" + str(i)
+            m.header.stamp = t
+            m.ns = "SRBD"
+            m.id = i + 1
+            m.type = Marker.SPHERE
+            m.action = Marker.ADD
+            m.pose.position.x = marker.pose.position.y = marker.pose.position.z = 0.
+            m.pose.orientation.x = marker.pose.orientation.y = marker.pose.orientation.z = 0.
+            m.pose.orientation.w = 1.
+            m.scale.x = m.scale.y = m.scale.z = 0.04
+            m.color.a = 0.8
+            m.color.r = m.color.g = 0.0
+            m.color.b = 1.0
+            marker_array.markers.append(m)
+
+        pub2 = rospy.Publisher('contacts', MarkerArray, queue_size=10).publish(marker_array)
