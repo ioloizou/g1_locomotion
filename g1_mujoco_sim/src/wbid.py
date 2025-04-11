@@ -274,6 +274,7 @@ class WholeBodyID:
             # The linear is just to satisfy opensot since is omitted in the stack
             linear_acceleration_reference = np.zeros((3,1))
             angular_acceleration_reference = inertia_torso_inv @ sum_r_cross_omega.T
+            angular_acceleration_reference = np.zeros((3,1))
 
             acceleration_reference = np.vstack((linear_acceleration_reference, angular_acceleration_reference)) 
             # Pass the updated homogeneous transformation.

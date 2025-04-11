@@ -135,6 +135,10 @@ class RvizSrbdFullBody:
         marker.type = Marker.LINE_STRIP
         marker.action = Marker.ADD
 
+        # Set the identity quaternion once before iterating over points
+        marker.pose.orientation.x = marker.pose.orientation.y = marker.pose.orientation.z = 0.
+        marker.pose.orientation.w = 1.
+
         for i in range(len(points)):
             p = Point()
             p.x = points[i].position.x

@@ -58,6 +58,9 @@ def publish_current_state(pub_srbd,
     
     srbd_state_msg.states_horizon.append(state_msg)
     
+    # The same order as in the contact frames
+    # foot_offset_x = [-0.05, 0.12, -0.05, 0.12]
+
     for i, contact_name in enumerate(["left_foot_line_contact_lower", "left_foot_line_contact_upper", "right_foot_line_contact_lower", "right_foot_line_contact_upper"]):
         contact_point_msg = ContactPoint()
         contact_point_msg.name = contact_name
@@ -74,48 +77,47 @@ def publish_current_state(pub_srbd,
     
     pub_srbd.publish(srbd_state_msg)
 
-def publish_feet_reference(pub_reference_feet_position,
-                           feet_ref_pos_msg,
-                           foot,
-                           swing_task_reference_pose,
-                           foot_positions_curr,
-                           sim_time):
-    # Reference pose for the swing foot to publish
-    feet_ref_pos_list = []
-    if foot == "left":    
-        foot_ref_pos = ContactPoint()
+## Wrong need to recheck offsets
+# def publish_feet_reference(pub_reference_feet_position,
+#                            feet_ref_pos_msg,
+#                            foot,
+#                            swing_task_reference_pose,
+#                            foot_positions_curr,
+#                            sim_time):
+#     # Reference pose for the swing foot to publish
+#     feet_ref_pos_list = []
+#     if foot == "left":    
+#         foot_ref_pos = ContactPoint()       
+#         foot_ref_pos.name = "right_foot_point_contact" 
+#         foot_ref_pos.position.x = swing_task_reference_pose.translation[0]
+#         foot_ref_pos.position.y = swing_task_reference_pose.translation[1]
+#         foot_ref_pos.position.z = swing_task_reference_pose.translation[2]
         
-        foot_ref_pos.name = "right_foot_point_contact" 
-        foot_ref_pos.position.x = swing_task_reference_pose.translation[0]
-        foot_ref_pos.position.y = swing_task_reference_pose.translation[1]
-        foot_ref_pos.position.z = swing_task_reference_pose.translation[2]
-        
-        feet_ref_pos_list.append(foot_ref_pos)
+#         feet_ref_pos_list.append(foot_ref_pos)
 
-        foot_ref_pos.name = "left_foot_point_contact"
-        foot_ref_pos.position.x = foot_positions_curr[0, 0]
-        foot_ref_pos.position.y = foot_positions_curr[0, 1]
-        foot_ref_pos.position.z = foot_positions_curr[0, 2]
-        feet_ref_pos_list.append(foot_ref_pos)
-    elif foot == "right":
-        foot_ref_pos = ContactPoint()
-        foot_ref_pos.name = "left_foot_point_contact"
-        foot_ref_pos.position.x = swing_task_reference_pose.translation[0]
-        foot_ref_pos.position.y = swing_task_reference_pose.translation[1]
-        foot_ref_pos.position.z = swing_task_reference_pose.translation[2]
+#         foot_ref_pos.name = "left_foot_point_contact"
+#         foot_ref_pos.position.x = foot_positions_curr[0, 0]
+#         foot_ref_pos.position.y = foot_positions_curr[0, 1]
+#         foot_ref_pos.position.z = foot_positions_curr[0, 2]
+#         feet_ref_pos_list.append(foot_ref_pos)
+#     elif foot == "right":
+#         foot_ref_pos = ContactPoint()
+#         foot_ref_pos.name = "left_foot_point_contact"
+#         foot_ref_pos.position.x = swing_task_reference_pose.translation[0]
+#         foot_ref_pos.position.y = swing_task_reference_pose.translation[1]
+#         foot_ref_pos.position.z = swing_task_reference_pose.translation[2]
 
-        feet_ref_pos_list.append(foot_ref_pos)
-
-        foot_ref_pos.name = "right_foot_point_contact"
-        foot_ref_pos.position.x = foot_positions_curr[1, 0]
-        foot_ref_pos.position.y = foot_positions_curr[1, 1]
-        foot_ref_pos.position.z = foot_positions_curr[1, 2]
+#         feet_ref_pos_list.append(foot_ref_pos)
+#         foot_ref_pos.name = "right_foot_point_contact"
+#         foot_ref_pos.position.x = foot_positions_curr[1, 0]
+#         foot_ref_pos.position.y = foot_positions_curr[1, 1]
+#         foot_ref_pos.position.z = foot_positions_curr[1, 2]
 
     
-    feet_ref_pos_msg.header.stamp = rospy.Time.from_sec(sim_time)
-    feet_ref_pos_msg.header.frame_id = "world"
-    feet_ref_pos_msg.feet_positions = feet_ref_pos_list
-    pub_reference_feet_position.publish(feet_ref_pos_msg)
+#     feet_ref_pos_msg.header.stamp = rospy.Time.from_sec(sim_time)
+#     feet_ref_pos_msg.header.frame_id = "world"
+#     feet_ref_pos_msg.feet_positions = feet_ref_pos_list
+#     pub_reference_feet_position.publish(feet_ref_pos_msg)
 
 def loadURDF(pkg_path):
     with open(
@@ -155,7 +157,7 @@ class G1MujocoSimulation:
         self.model = mujoco.MjModel.from_xml_path(model_path)
         self.data = mujoco.MjData(self.model)
 
-        # Set initial joint configuration
+        # Set initial joint configuration. Xbot quaternion is [x, y, z, w] to mujoco [w, x, y, z]
         self.data.qpos = q_init.copy()
         self.data.qpos[3] = q_init[6]
         self.data.qpos[4] = q_init[3]
@@ -331,15 +333,17 @@ class G1MujocoSimulation:
                 rospy.loginfo(f'{foot} in contact, other foot swinging down, progress: {cycle_progress:.2f}')
             
             # Publish the reference foot position
-            publish_feet_reference(pub_reference_feet_position,
-                                   feet_ref_pos_msg,
-                                   foot,
-                                   swing_task_reference_pose,
-                                   foot_positions_curr,
-                                   self.sim_time)
+            # publish_feet_reference(pub_reference_feet_position,
+            #                        feet_ref_pos_msg,
+            #                        foot,
+            #                        swing_task_reference_pose,
+            #                        foot_positions_curr,
+            #                        self.sim_time)
 
         if left_foot_active and right_foot_active:
             rospy.loginfo("Double support phase")
+            WBID.swing_tasks[0].setActive(False)
+            WBID.swing_tasks[1].setActive(False)
         elif left_foot_active:
             feet_gait_procedure("left")
         elif right_foot_active:
