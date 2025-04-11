@@ -3,87 +3,87 @@
  <tabbed_widget parent="main_window" name="Main Window">
   <Tab containers="1" tab_name="States">
    <Container>
-    <DockSplitter orientation="-" count="2" sizes="0.50055;0.49945">
-     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
-      <DockSplitter orientation="-" count="2" sizes="0.5;0.5">
+    <DockSplitter sizes="0.500805;0.499195" orientation="-" count="2">
+     <DockSplitter sizes="0.500355;0.499645" orientation="|" count="2">
+      <DockSplitter sizes="0.500805;0.499195" orientation="-" count="2">
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296902.551867" bottom="0.000606" left="1744296893.284782" top="0.681342"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="0.127216" left="1744370456.898438" right="1744370500.329068" top="0.899163"/>
          <limitY/>
-         <curve color="#bcbd22" name="/mpc_solution/position/x"/>
-         <curve color="#d62728" name="/mpc_solution/position/y"/>
-         <curve color="#1f77b4" name="/mpc_solution/position/z"/>
+         <curve name="/mpc_solution/states_horizon[1]/position/x" color="#1ac938"/>
+         <curve name="/mpc_solution/states_horizon[1]/position/y" color="#ff7f0e"/>
+         <curve name="/mpc_solution/states_horizon[1]/position/z" color="#f14cc1"/>
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296902.551867" bottom="-0.417464" left="1744296893.284782" top="0.044019"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="-0.036130" left="1744370456.898438" right="1744370500.329068" top="0.588352"/>
          <limitY/>
-         <curve color="#ff7f0e" name="/mpc_solution/linear_velocity/x"/>
-         <curve color="#f14cc1" name="/mpc_solution/linear_velocity/y"/>
-         <curve color="#9467bd" name="/mpc_solution/linear_velocity/z"/>
+         <curve name="/mpc_solution/states_horizon[1]/linear_velocity/x" color="#9467bd"/>
+         <curve name="/mpc_solution/states_horizon[1]/linear_velocity/y" color="#17becf"/>
+         <curve name="/mpc_solution/states_horizon[1]/linear_velocity/z" color="#bcbd22"/>
         </plot>
        </DockArea>
       </DockSplitter>
-      <DockSplitter orientation="-" count="2" sizes="0.5;0.5">
+      <DockSplitter sizes="0.500805;0.499195" orientation="-" count="2">
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296902.551867" bottom="0.009040" left="1744296893.284782" top="0.671434"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="0.002562" left="1744370456.898438" right="1744370500.329068" top="0.895187"/>
          <limitY/>
-         <curve color="#9467bd" name="/srbd_current/position/x"/>
-         <curve color="#17becf" name="/srbd_current/position/y"/>
-         <curve color="#bcbd22" name="/srbd_current/position/z"/>
+         <curve name="/srbd_current/states_horizon[0]/position/x" color="#17becf"/>
+         <curve name="/srbd_current/states_horizon[0]/position/y" color="#bcbd22"/>
+         <curve name="/srbd_current/states_horizon[0]/position/z" color="#1f77b4"/>
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296902.551867" bottom="-0.184781" left="1744296893.284782" top="0.699598"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="-2.049535" left="1744370456.898438" right="1744370500.329068" top="1.314549"/>
          <limitY/>
-         <curve color="#1f77b4" name="/srbd_current/linear_velocity/x"/>
-         <curve color="#d62728" name="/srbd_current/linear_velocity/y"/>
-         <curve color="#1ac938" name="/srbd_current/linear_velocity/z"/>
+         <curve name="/srbd_current/states_horizon[0]/linear_velocity/x" color="#d62728"/>
+         <curve name="/srbd_current/states_horizon[0]/linear_velocity/y" color="#1ac938"/>
+         <curve name="/srbd_current/states_horizon[0]/linear_velocity/z" color="#ff7f0e"/>
         </plot>
        </DockArea>
       </DockSplitter>
      </DockSplitter>
-     <DockSplitter orientation="|" count="2" sizes="0.502506;0.497494">
-      <DockSplitter orientation="-" count="2" sizes="0.501104;0.498896">
+     <DockSplitter sizes="0.502841;0.497159" orientation="|" count="2">
+      <DockSplitter sizes="0.500808;0.499192" orientation="-" count="2">
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296902.551867" bottom="-0.044869" left="1744296893.284782" top="0.035802"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="-1.826312" left="1744370456.898438" right="1744370500.329068" top="0.177926"/>
          <limitY/>
-         <curve color="#1ac938" name="/mpc_solution/orientation/x"/>
-         <curve color="#ff7f0e" name="/mpc_solution/orientation/y"/>
-         <curve color="#f14cc1" name="/mpc_solution/orientation/z"/>
+         <curve name="/mpc_solution/states_horizon[1]/orientation/x" color="#1f77b4"/>
+         <curve name="/mpc_solution/states_horizon[1]/orientation/y" color="#1ac938"/>
+         <curve name="/mpc_solution/states_horizon[1]/orientation/z" color="#d62728"/>
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296902.551867" bottom="-1.707590" left="1744296893.284782" top="0.264920"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="-1.202775" left="1744370456.898438" right="1744370500.329068" top="2.045762"/>
          <limitY/>
-         <curve color="#d62728" name="/mpc_solution/angular_velocity/x"/>
-         <curve color="#1ac938" name="/mpc_solution/angular_velocity/y"/>
-         <curve color="#ff7f0e" name="/mpc_solution/angular_velocity/z"/>
+         <curve name="/mpc_solution/states_horizon[1]/angular_velocity/x" color="#ff7f0e"/>
+         <curve name="/mpc_solution/states_horizon[1]/angular_velocity/y" color="#f14cc1"/>
+         <curve name="/mpc_solution/states_horizon[1]/angular_velocity/z" color="#9467bd"/>
         </plot>
        </DockArea>
       </DockSplitter>
-      <DockSplitter orientation="-" count="2" sizes="0.501104;0.498896">
+      <DockSplitter sizes="0.500808;0.499192" orientation="-" count="2">
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296902.551867" bottom="-0.021856" left="1744296893.284782" top="0.104476"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="-1.743273" left="1744370456.898438" right="1744370500.329068" top="0.527538"/>
          <limitY/>
-         <curve color="#17becf" name="/srbd_current/orientation/x"/>
-         <curve color="#bcbd22" name="/srbd_current/orientation/y"/>
-         <curve color="#1f77b4" name="/srbd_current/orientation/z"/>
+         <curve name="/srbd_current/states_horizon[0]/orientation/x" color="#f14cc1"/>
+         <curve name="/srbd_current/states_horizon[0]/orientation/y" color="#9467bd"/>
+         <curve name="/srbd_current/states_horizon[0]/orientation/z" color="#17becf"/>
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296902.551867" bottom="-1.739213" left="1744296893.284782" top="0.330589"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="-8.542145" left="1744370456.898438" right="1744370500.329068" top="6.683845"/>
          <limitY/>
-         <curve color="#ff7f0e" name="/srbd_current/angular_velocity/x"/>
-         <curve color="#f14cc1" name="/srbd_current/angular_velocity/y"/>
-         <curve color="#9467bd" name="/srbd_current/angular_velocity/z"/>
+         <curve name="/srbd_current/states_horizon[0]/angular_velocity/x" color="#bcbd22"/>
+         <curve name="/srbd_current/states_horizon[0]/angular_velocity/y" color="#1f77b4"/>
+         <curve name="/srbd_current/states_horizon[0]/angular_velocity/z" color="#d62728"/>
         </plot>
        </DockArea>
       </DockSplitter>
@@ -93,45 +93,45 @@
   </Tab>
   <Tab containers="1" tab_name="Contact Forces">
    <Container>
-    <DockSplitter orientation="-" count="1" sizes="1">
-     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
-      <DockSplitter orientation="-" count="2" sizes="0.50055;0.49945">
+    <DockSplitter sizes="1" orientation="-" count="1">
+     <DockSplitter sizes="0.500355;0.499645" orientation="|" count="2">
+      <DockSplitter sizes="0.500805;0.499195" orientation="-" count="2">
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296902.551867" bottom="-0.224217" left="1744296897.556013" top="0.033265"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="-0.237693" left="1744370495.331394" right="1744370500.329068" top="0.005746"/>
          <limitY/>
-         <curve color="#f14cc1" name="/mpc_solution/contacts[0]/force/x"/>
-         <curve color="#9467bd" name="/mpc_solution/contacts[0]/force/y"/>
-         <curve color="#17becf" name="/mpc_solution/contacts[0]/force/z"/>
+         <curve name="/mpc_solution/contacts[0]/force/x" color="#f14cc1"/>
+         <curve name="/mpc_solution/contacts[0]/force/y" color="#9467bd"/>
+         <curve name="/mpc_solution/contacts[0]/force/z" color="#17becf"/>
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296902.551867" bottom="-4.833028" left="1744296897.556013" top="58.918327"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="-3.545268" left="1744370495.331394" right="1744370500.329068" top="10.260231"/>
          <limitY/>
-         <curve color="#d62728" name="/mpc_solution/contacts[2]/force/x"/>
-         <curve color="#1ac938" name="/mpc_solution/contacts[2]/force/y"/>
-         <curve color="#ff7f0e" name="/mpc_solution/contacts[2]/force/z"/>
+         <curve name="/mpc_solution/contacts[2]/force/x" color="#d62728"/>
+         <curve name="/mpc_solution/contacts[2]/force/y" color="#1ac938"/>
+         <curve name="/mpc_solution/contacts[2]/force/z" color="#ff7f0e"/>
         </plot>
        </DockArea>
       </DockSplitter>
-      <DockSplitter orientation="-" count="2" sizes="0.50055;0.49945">
+      <DockSplitter sizes="0.5;0.5" orientation="-" count="2">
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296902.551867" bottom="-0.213832" left="1744296897.556013" top="0.034177"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="-0.204150" left="1744370495.331394" right="1744370500.329068" top="0.004937"/>
          <limitY/>
-         <curve color="#17becf" name="/mpc_solution/contacts[1]/force/x"/>
-         <curve color="#bcbd22" name="/mpc_solution/contacts[1]/force/y"/>
-         <curve color="#1f77b4" name="/mpc_solution/contacts[1]/force/z"/>
+         <curve name="/mpc_solution/contacts[1]/force/x" color="#17becf"/>
+         <curve name="/mpc_solution/contacts[1]/force/y" color="#bcbd22"/>
+         <curve name="/mpc_solution/contacts[1]/force/z" color="#1f77b4"/>
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296902.551867" bottom="-3.326141" left="1744296897.556013" top="10.470040"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="-116.055348" left="1744370495.331394" right="1744370500.329068" top="359.582092"/>
          <limitY/>
-         <curve color="#f14cc1" name="/mpc_solution/contacts[3]/force/x"/>
-         <curve color="#9467bd" name="/mpc_solution/contacts[3]/force/y"/>
-         <curve color="#17becf" name="/mpc_solution/contacts[3]/force/z"/>
+         <curve name="/mpc_solution/contacts[3]/force/x" color="#f14cc1"/>
+         <curve name="/mpc_solution/contacts[3]/force/y" color="#9467bd"/>
+         <curve name="/mpc_solution/contacts[3]/force/z" color="#17becf"/>
         </plot>
        </DockArea>
       </DockSplitter>
@@ -141,51 +141,48 @@
   </Tab>
   <Tab containers="1" tab_name="Contact Positions">
    <Container>
-    <DockSplitter orientation="-" count="1" sizes="1">
-     <DockSplitter orientation="|" count="2" sizes="0.56203;0.43797">
-      <DockSplitter orientation="-" count="2" sizes="0.50055;0.49945">
+    <DockSplitter sizes="1" orientation="-" count="1">
+     <DockSplitter sizes="0.562145;0.437855" orientation="|" count="2">
+      <DockSplitter sizes="0.500805;0.499195" orientation="-" count="2">
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296897.939751" bottom="0.120146" left="1744296890.914724" top="0.132745"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="-0.004288" left="1744370456.898438" right="1744370461.898228" top="0.648387"/>
          <limitY/>
-         <curve color="#bcbd22" name="/srbd_current/contacts[0]/position/x"/>
-         <curve color="#1f77b4" name="/srbd_current/contacts[0]/position/y"/>
-         <curve color="#d62728" name="/srbd_current/contacts[0]/position/z"/>
-         <curve color="#1ac938" name="/feet_ref_pos/feet_positions[0]/position/x"/>
-         <curve color="#ff7f0e" name="/feet_ref_pos/feet_positions[0]/position/y"/>
-         <curve color="#f14cc1" name="/feet_ref_pos/feet_positions[0]/position/z"/>
+         <curve name="/srbd_current/contacts[0]/position/x" color="#bcbd22"/>
+         <curve name="/srbd_current/contacts[0]/position/y" color="#1f77b4"/>
+         <curve name="/srbd_current/contacts[0]/position/z" color="#d62728"/>
+         <curve name="/feet_ref_pos/feet_positions[0]/position/x" color="#1ac938"/>
+         <curve name="/feet_ref_pos/feet_positions[0]/position/y" color="#ff7f0e"/>
+         <curve name="/feet_ref_pos/feet_positions[0]/position/z" color="#f14cc1"/>
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296897.939751" bottom="-0.234031" left="1744296890.914724" top="0.130653"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="-0.416782" left="1744370456.898438" right="1744370461.898228" top="0.392068"/>
          <limitY/>
-         <curve color="#9467bd" name="/srbd_current/contacts[2]/position/x"/>
-         <curve color="#17becf" name="/srbd_current/contacts[2]/position/y"/>
-         <curve color="#bcbd22" name="/srbd_current/contacts[2]/position/z"/>
-         <curve color="#ff7f0e" name="/feet_ref_pos/feet_positions[1]/position/x"/>
-         <curve color="#f14cc1" name="/feet_ref_pos/feet_positions[1]/position/y"/>
-         <curve color="#9467bd" name="/feet_ref_pos/feet_positions[1]/position/z"/>
+         <curve name="/srbd_current/contacts[2]/position/x" color="#9467bd"/>
+         <curve name="/srbd_current/contacts[2]/position/y" color="#17becf"/>
+         <curve name="/srbd_current/contacts[2]/position/z" color="#bcbd22"/>
         </plot>
        </DockArea>
       </DockSplitter>
-      <DockSplitter orientation="-" count="2" sizes="0.50055;0.49945">
+      <DockSplitter sizes="0.5;0.5" orientation="-" count="2">
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296897.939751" bottom="-0.030949" left="1744296890.914724" top="0.180367"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="-0.032054" left="1744370456.898438" right="1744370461.898228" top="0.522074"/>
          <limitY/>
-         <curve color="#1ac938" name="/srbd_current/contacts[1]/position/x"/>
-         <curve color="#ff7f0e" name="/srbd_current/contacts[1]/position/y"/>
-         <curve color="#f14cc1" name="/srbd_current/contacts[1]/position/z"/>
+         <curve name="/srbd_current/contacts[1]/position/x" color="#1ac938"/>
+         <curve name="/srbd_current/contacts[1]/position/y" color="#ff7f0e"/>
+         <curve name="/srbd_current/contacts[1]/position/z" color="#f14cc1"/>
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296897.939751" bottom="-0.257394" left="1744296890.914724" top="0.096593"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="-0.565906" left="1744370456.898438" right="1744370461.898228" top="0.329516"/>
          <limitY/>
-         <curve color="#1f77b4" name="/srbd_current/contacts[3]/position/x"/>
-         <curve color="#d62728" name="/srbd_current/contacts[3]/position/y"/>
-         <curve color="#1ac938" name="/srbd_current/contacts[3]/position/z"/>
+         <curve name="/srbd_current/contacts[3]/position/x" color="#1f77b4"/>
+         <curve name="/srbd_current/contacts[3]/position/y" color="#d62728"/>
+         <curve name="/srbd_current/contacts[3]/position/z" color="#1ac938"/>
         </plot>
        </DockArea>
       </DockSplitter>
@@ -195,41 +192,41 @@
   </Tab>
   <Tab containers="1" tab_name="Contact Active">
    <Container>
-    <DockSplitter orientation="-" count="1" sizes="1">
-     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
-      <DockSplitter orientation="-" count="2" sizes="0.50055;0.49945">
+    <DockSplitter sizes="1" orientation="-" count="1">
+     <DockSplitter sizes="0.500355;0.499645" orientation="|" count="2">
+      <DockSplitter sizes="0.500805;0.499195" orientation="-" count="2">
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296902.551867" bottom="-0.100000" left="1744296893.284782" top="0.100000"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="-0.100000" left="1744370456.898438" right="1744370500.329068" top="0.100000"/>
          <limitY/>
-         <curve color="#d62728" name="/mpc_solution/contacts[0]/active"/>
-         <curve color="#1ac938" name="/mpc_solution/contacts[1]/active"/>
+         <curve name="/mpc_solution/contacts[0]/active" color="#d62728"/>
+         <curve name="/mpc_solution/contacts[1]/active" color="#1ac938"/>
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296902.551867" bottom="0.900000" left="1744296893.284782" top="1.100000"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="0.900000" left="1744370456.898438" right="1744370500.329068" top="1.100000"/>
          <limitY/>
-         <curve color="#1f77b4" name="/mpc_solution/contacts[2]/active"/>
-         <curve color="#d62728" name="/mpc_solution/contacts[3]/active"/>
+         <curve name="/mpc_solution/contacts[2]/active" color="#1f77b4"/>
+         <curve name="/mpc_solution/contacts[3]/active" color="#d62728"/>
         </plot>
        </DockArea>
       </DockSplitter>
-      <DockSplitter orientation="-" count="2" sizes="0.50055;0.49945">
+      <DockSplitter sizes="0.5;0.5" orientation="-" count="2">
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296902.551867" bottom="-0.100000" left="1744296893.284782" top="0.100000"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="-0.100000" left="1744370456.898438" right="1744370500.329068" top="0.100000"/>
          <limitY/>
-         <curve color="#1ac938" name="/srbd_current/contacts[0]/active"/>
-         <curve color="#ff7f0e" name="/srbd_current/contacts[1]/active"/>
+         <curve name="/srbd_current/contacts[0]/active" color="#1ac938"/>
+         <curve name="/srbd_current/contacts[1]/active" color="#ff7f0e"/>
         </plot>
        </DockArea>
        <DockArea name="...">
-        <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-         <range right="1744296902.551867" bottom="-0.100000" left="1744296893.284782" top="0.100000"/>
+        <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+         <range bottom="-0.100000" left="1744370456.898438" right="1744370500.329068" top="0.100000"/>
          <limitY/>
-         <curve color="#f14cc1" name="/srbd_current/contacts[2]/active"/>
-         <curve color="#9467bd" name="/srbd_current/contacts[3]/active"/>
+         <curve name="/srbd_current/contacts[2]/active" color="#f14cc1"/>
+         <curve name="/srbd_current/contacts[3]/active" color="#9467bd"/>
         </plot>
        </DockArea>
       </DockSplitter>
@@ -239,13 +236,13 @@
   </Tab>
   <Tab containers="1" tab_name="XY CoM">
    <Container>
-    <DockSplitter orientation="-" count="1" sizes="1">
+    <DockSplitter sizes="1" orientation="-" count="1">
      <DockArea name="...">
-      <plot mode="XYPlot" flip_x="false" flip_y="false" style="Lines">
-       <range right="0.045122" bottom="0.121724" left="0.016123" top="0.137318"/>
+      <plot flip_x="false" flip_y="false" mode="XYPlot" style="Lines">
+       <range bottom="0.144121" left="-0.134785" right="0.302421" top="0.326158"/>
        <limitY/>
-       <curve curve_y="/mpc_solution/position/y" curve_x="/mpc_solution/position/x" color="#1f77b4" name="/mpc_solution/position/[x;y]"/>
-       <curve curve_y="/srbd_current/position/y" curve_x="/srbd_current/position/x" color="#9467bd" name="/srbd_current/position/[x;y]"/>
+       <curve curve_y="/mpc_solution/position/y" name="/mpc_solution/position/[x;y]" color="#1f77b4" curve_x="/mpc_solution/position/x"/>
+       <curve curve_y="/srbd_current/position/y" name="/srbd_current/position/[x;y]" color="#9467bd" curve_x="/srbd_current/position/x"/>
       </plot>
      </DockArea>
     </DockSplitter>
@@ -253,19 +250,19 @@
   </Tab>
   <Tab containers="1" tab_name="Solving Times">
    <Container>
-    <DockSplitter orientation="-" count="1" sizes="1">
+    <DockSplitter sizes="1" orientation="-" count="1">
      <DockArea name="...">
-      <plot mode="TimeSeries" flip_x="false" flip_y="false" style="Lines">
-       <range right="1744296902.551922" bottom="-0.560744" left="1744296893.284926" top="23.092720"/>
+      <plot flip_x="false" flip_y="false" mode="TimeSeries" style="Lines">
+       <range bottom="0.002040" left="1744370456.913764" right="1744370500.329146" top="0.007566"/>
        <limitY/>
-       <curve color="#17becf" name="/mpc_statistics/full/statistics[4]/value"/>
-       <curve color="#bcbd22" name="/wbid_statistics/full/statistics[0]/value"/>
+       <curve name="/mpc_statistics/full/statistics[4]/value" color="#17becf"/>
+       <curve name="/wbid_statistics/full/statistics[0]/value" color="#bcbd22"/>
       </plot>
      </DockArea>
     </DockSplitter>
    </Container>
   </Tab>
-  <currentTabIndex index="2"/>
+  <currentTabIndex index="0"/>
  </tabbed_widget>
  <use_relative_time_offset enabled="0"/>
  <!-- - - - - - - - - - - - - - - -->
@@ -290,7 +287,7 @@
    <max_array_size value="100"/>
    <boolean_strings_to_number value="true"/>
    <remove_suffix_from_strings value="true"/>
-   <selected_topics value="/mpc_solution;/srbd_current"/>
+   <selected_topics value="/feet_ref_pos;/mpc_solution;/mpc_statistics/full;/srbd_current;/wbid_statistics/full"/>
   </plugin>
   <plugin ID="UDP Server"/>
   <plugin ID="WebSocket Server"/>

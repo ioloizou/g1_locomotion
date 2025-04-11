@@ -24,6 +24,7 @@ add_message_files(
   SRBD_state.msg
   ContactPoint.msg
   Feet_reference.msg
+  State.msg
 )
 
 # Generate added messages and services with any dependencies listed here

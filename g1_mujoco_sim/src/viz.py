@@ -100,19 +100,28 @@ class RvizSrbdFullBody:
         f_msg.wrench.torque.x = f_msg.wrench.torque.y = f_msg.wrench.torque.z = 0.
         pub = rospy.Publisher('force_' + frame, WrenchStamped, queue_size=10).publish(f_msg)
 
-    def SRBDViewer(self, I, srbd_msg, t, contact_frames):
+    def publishSRBDViewer(self, I, srbd_msg, t, contact_frames):
 
         w_T_com = TransformStamped()
         w_T_com.header.frame_id = "world"
         w_T_com.child_frame_id = "srbd_com"
         w_T_com.header.stamp = t
 
-        w_T_com.transform.translation.x = srbd_msg.position.x
-        w_T_com.transform.translation.y = srbd_msg.position.y
-        w_T_com.transform.translation.z = srbd_msg.position.z
+        # Check if states_horizon has elements before accessing
+        if len(srbd_msg.states_horizon) > 1:
+            # Use index 1 as before
+            state = srbd_msg.states_horizon[1]
+        else:
+            # Handle empty states_horizon case - return early
+            rospy.logwarn("Empty states_horizon in srbd_msg, skipping visualization")
+            return
+
+        w_T_com.transform.translation.x = state.position.x
+        w_T_com.transform.translation.y = state.position.y
+        w_T_com.transform.translation.z = state.position.z
 
         # Get quaternion from euler angles
-        q = tf.transformations.quaternion_from_euler(srbd_msg.orientation.x, srbd_msg.orientation.y, srbd_msg.orientation.z)
+        q = tf.transformations.quaternion_from_euler(state.orientation.x, state.orientation.y, state.orientation.z)
         w_T_com.transform.rotation.x = q[0]
         w_T_com.transform.rotation.y = q[1]
         w_T_com.transform.rotation.z = q[2]
@@ -124,7 +133,7 @@ class RvizSrbdFullBody:
         marker.header.frame_id = "srbd_com"
         marker.header.stamp = t
         marker.ns = "SRBD"
-        marker.id = 0
+        marker.id = 200
         marker.type = Marker.SPHERE
         marker.action = Marker.ADD
         marker.pose.position.x = marker.pose.position.y = marker.pose.position.z = 0.
