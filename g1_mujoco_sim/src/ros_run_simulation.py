@@ -411,6 +411,9 @@ class G1MujocoSimulation:
 
         self.rviz_srbd_full.publishSRBDViewer(WBID.inertia_torso, self.srbd_recieved, rospy.Time(self.sim_time), WBID.contact_frames)
 
+        # Publish the com horizon in rviz
+        self.rviz_srbd_full.publishPointTrj(self.srbd_recieved.states_horizon, rospy.Time(self.sim_time), "CoM")
+
         # Publish the simulation time
         sim_time_msg = Clock()
         sim_time_msg.clock = rospy.Time.from_sec(self.sim_time)

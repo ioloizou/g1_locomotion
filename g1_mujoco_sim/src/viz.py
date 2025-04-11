@@ -8,29 +8,7 @@ from xbot2_interface import pyxbot2_interface as xbi
 
 
 
-# def publishPointTrj(points, t, name, frame, color = [0.7, 0.7, 0.7]):
-#     marker = Marker()
-#     marker.header.frame_id = frame
-#     marker.header.stamp = t
-#     marker.ns = "SRBD"
-#     marker.id = 1000
-#     marker.type = Marker.LINE_STRIP
-#     marker.action = Marker.ADD
 
-#     for k in range(0, points.shape[1]):
-#         p = Point()
-#         p.x = points[0, k]
-#         p.y = points[1, k]
-#         p.z = points[2, k]
-#         marker.points.append(p)
-
-#     marker.color.a = 1.
-#     marker.scale.x = 0.005
-#     marker.color.r = color[0]
-#     marker.color.g = color[1]
-#     marker.color.b = color[2]
-
-#     pub = rospy.Publisher(name + "_trj", Marker, queue_size=10).publish(marker)
 
 
 
@@ -148,6 +126,30 @@ class RvizSrbdFullBody:
 
         pub = rospy.Publisher('srbd_marker', Marker, queue_size=10).publish(marker)
 
+    def publishPointTrj(self, points, t, name, color = [0., 0., 1.]):
+        marker = Marker()
+        marker.header.frame_id = "world"
+        marker.header.stamp = t
+        marker.ns = "SRBD"
+        marker.id = 1000
+        marker.type = Marker.LINE_STRIP
+        marker.action = Marker.ADD
+
+        for i in range(len(points)):
+            p = Point()
+            p.x = points[i].position.x
+            p.y = points[i].position.y
+            p.z = points[i].position.z
+            marker.points.append(p)
+
+        marker.color.a = 1.
+        marker.scale.x = 0.005
+        marker.color.r = color[0]
+        marker.color.g = color[1]
+        marker.color.b = color[2]
+
+        pub = rospy.Publisher(name + "_trj", Marker, queue_size=10).publish(marker)
+        
         # Need to publish from MPC still not ready
         # marker_array = MarkerArray()
         # for i, contact_frame in enumerate(contact_frames):

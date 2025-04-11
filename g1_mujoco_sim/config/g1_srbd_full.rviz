@@ -7,6 +7,7 @@ Panels:
         - /Global Options1
         - /RobotModel1
         - /TF1/Tree1
+        - /ComHorizon1/Status1
       Splitter Ratio: 0.5
     Tree Height: 490
   - Class: rviz/Selection
@@ -547,9 +548,17 @@ Visualization Manager:
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /srbd_marker
-      Name: Marker
+      Name: SrbdModel
       Namespaces:
-        "": true
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /CoM_trj
+      Name: ComHorizon
+      Namespaces:
+        SRBD: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -580,7 +589,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.3592214584350586
+      Distance: 1.7973474264144897
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -588,17 +597,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.056150175631046295
-        Y: -0.12096858769655228
-        Z: 0.3754996061325073
+        X: -0.05645556002855301
+        Y: 0.012069514952600002
+        Z: 0.4971284866333008
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.19539856910705566
+      Pitch: 0.24039916694164276
       Target Frame: <Fixed Frame>
-      Yaw: 6.263600826263428
+      Yaw: 3.1836018562316895
     Saved: ~
 Window Geometry:
   Displays:
@@ -617,4 +626,4 @@ Window Geometry:
     collapsed: true
   Width: 1440
   X: 227
-  Y: 335
+  Y: 298
