@@ -67,7 +67,7 @@ class WholeBodyID:
         self.base = Cartesian(
             "base", self.model, "world", "pelvis", self.variables.getVariable("qddot")
         )
-        base_gain = 12.
+        base_gain = 20.
         base_Kp = np.diag([1., 1., 1., 10., 10., 20.]) * base_gain
         self.base.setKp(base_Kp)
         base_Kd = np.diag([1., 1., 1., 50., 50., 50.]) * base_gain
@@ -125,7 +125,7 @@ class WholeBodyID:
                     self.variables.getVariable(contact_frame))
             )
 
-        posture_gain = 40.
+        posture_gain = 80.
         posture = Postural(self.model, self.variables.getVariable("qddot"))
         posture_Kp = np.eye(self.model.nv) * 2. * posture_gain
         posture.setKp(posture_Kp)
@@ -159,7 +159,8 @@ class WholeBodyID:
 
         min_force_weight = 1e-5
         # For the self.base task taking only the orientation part
-        self.stack = 1.0*self.com + 0.4*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]) + 0.3*angular_momentum + 0.005*req_qddot 
+        self.stack = 1.0*self.com + 0.4*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28])+ 0.005*req_qddot 
+        # self.stack += 0.1*angular_momentum
         # self.stack += min_force_weight*req_forces_0 + min_force_weight*req_forces_1 + min_force_weight*req_forces_2 + min_force_weight*req_forces_3
         self.stack += 1e-8 * MinimizeVariable("min_torques", torques)
         # 
@@ -173,7 +174,7 @@ class WholeBodyID:
         self.wrench_tasks = list()
         for contact_frame in self.contact_frames:
             self.wrench_tasks.append(MinimizeVariable(contact_frame, self.variables.getVariable(contact_frame)))
-            self.stack = self.stack + 0.1*(self.wrench_tasks[-1])
+            self.stack = self.stack + 0.7*(self.wrench_tasks[-1])
         
         self.dynamics_constraint = DynamicFeasibility(
             "floating_base_dynamics",
@@ -257,9 +258,9 @@ class WholeBodyID:
             
             # Since i use in MPC the torso inertia, 
             self.inertia_torso = np.array([
-                [3.20564e-1, 4.35027e-06, 0.425526e-1],
-                [4.35027e-06, 3.05015e-1, -0.00065082e-1],
-                [0.425526e-1, -0.00065082e-1, 0.552353e-1]
+                [6.20564e-2, 0., 0.],
+                [0., 5.05015e-2, 0.],
+                [0., 0., 0.032353e-2]
             ])
 
             # If i turn i need to rotate it based on yaw
@@ -274,7 +275,7 @@ class WholeBodyID:
             # The linear is just to satisfy opensot since is omitted in the stack
             linear_acceleration_reference = np.zeros((3,1))
             angular_acceleration_reference = inertia_torso_inv @ sum_r_cross_omega.T
-            angular_acceleration_reference = np.zeros((3,1))
+            # angular_acceleration_reference = np.zeros((3,1))
 
             acceleration_reference = np.vstack((linear_acceleration_reference, angular_acceleration_reference)) 
             # Pass the updated homogeneous transformation.

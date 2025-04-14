@@ -77,47 +77,49 @@ def publish_current_state(pub_srbd,
     
     pub_srbd.publish(srbd_state_msg)
 
-## Wrong need to recheck offsets
-# def publish_feet_reference(pub_reference_feet_position,
-#                            feet_ref_pos_msg,
-#                            foot,
-#                            swing_task_reference_pose,
-#                            foot_positions_curr,
-#                            sim_time):
-#     # Reference pose for the swing foot to publish
-#     feet_ref_pos_list = []
-#     if foot == "left":    
-#         foot_ref_pos = ContactPoint()       
-#         foot_ref_pos.name = "right_foot_point_contact" 
-#         foot_ref_pos.position.x = swing_task_reference_pose.translation[0]
-#         foot_ref_pos.position.y = swing_task_reference_pose.translation[1]
-#         foot_ref_pos.position.z = swing_task_reference_pose.translation[2]
-        
-#         feet_ref_pos_list.append(foot_ref_pos)
-
-#         foot_ref_pos.name = "left_foot_point_contact"
-#         foot_ref_pos.position.x = foot_positions_curr[0, 0]
-#         foot_ref_pos.position.y = foot_positions_curr[0, 1]
-#         foot_ref_pos.position.z = foot_positions_curr[0, 2]
-#         feet_ref_pos_list.append(foot_ref_pos)
-#     elif foot == "right":
-#         foot_ref_pos = ContactPoint()
-#         foot_ref_pos.name = "left_foot_point_contact"
-#         foot_ref_pos.position.x = swing_task_reference_pose.translation[0]
-#         foot_ref_pos.position.y = swing_task_reference_pose.translation[1]
-#         foot_ref_pos.position.z = swing_task_reference_pose.translation[2]
-
-#         feet_ref_pos_list.append(foot_ref_pos)
-#         foot_ref_pos.name = "right_foot_point_contact"
-#         foot_ref_pos.position.x = foot_positions_curr[1, 0]
-#         foot_ref_pos.position.y = foot_positions_curr[1, 1]
-#         foot_ref_pos.position.z = foot_positions_curr[1, 2]
-
+## Wrong need to recheck offsets now just checking y which doesnt get affected
+def publish_feet_reference(pub_reference_feet_position,
+                           feet_ref_pos_msg,
+                           foot,
+                           swing_task_reference_pose,
+                           foot_positions_curr,
+                           sim_time):
+    # Reference pose for the swing foot to publish
+    feet_ref_pos_list = []
     
-#     feet_ref_pos_msg.header.stamp = rospy.Time.from_sec(sim_time)
-#     feet_ref_pos_msg.header.frame_id = "world"
-#     feet_ref_pos_msg.feet_positions = feet_ref_pos_list
-#     pub_reference_feet_position.publish(feet_ref_pos_msg)
+    # Create two separate ContactPoint objects
+    right_foot_ref = ContactPoint()
+    right_foot_ref.name = "right_foot_point_contact"
+    
+    left_foot_ref = ContactPoint()
+    left_foot_ref.name = "left_foot_point_contact"
+    
+    if foot == "left":    
+        # Left foot is in contact, right foot is swinging
+        right_foot_ref.position.x = swing_task_reference_pose.translation[0]
+        right_foot_ref.position.y = swing_task_reference_pose.translation[1]
+        right_foot_ref.position.z = swing_task_reference_pose.translation[2]
+        
+        left_foot_ref.position.x = foot_positions_curr[0, 0]
+        left_foot_ref.position.y = foot_positions_curr[0, 1]
+        left_foot_ref.position.z = foot_positions_curr[0, 2]
+    elif foot == "right":
+        # Right foot is in contact, left foot is swinging
+        left_foot_ref.position.x = swing_task_reference_pose.translation[0]
+        left_foot_ref.position.y = swing_task_reference_pose.translation[1]
+        left_foot_ref.position.z = swing_task_reference_pose.translation[2]
+        
+        right_foot_ref.position.x = foot_positions_curr[2, 0]
+        right_foot_ref.position.y = foot_positions_curr[2, 1]
+        right_foot_ref.position.z = foot_positions_curr[2, 2]
+    
+    feet_ref_pos_list.append(left_foot_ref)
+    feet_ref_pos_list.append(right_foot_ref)
+    
+    feet_ref_pos_msg.header.stamp = rospy.Time.from_sec(sim_time)
+    feet_ref_pos_msg.header.frame_id = "world"
+    feet_ref_pos_msg.feet_positions = feet_ref_pos_list
+    pub_reference_feet_position.publish(feet_ref_pos_msg)
 
 def loadURDF(pkg_path):
     with open(
@@ -264,17 +266,22 @@ class G1MujocoSimulation:
         # Right foot contact task is active if either right foot contact point is active
         right_foot_active = self.contact_states[2] == 1 or self.contact_states[3] == 1
 
+        if self.sim_time == 0.0:
+            self.left_foot_contact_start = WBID.model.getPose("left_foot_point_contact")
+            self.right_foot_contact_start = WBID.model.getPose("right_foot_point_contact")
+
+        # rospy.loginfo(f'Left foot contact_start: {self.left_foot_contact_start}')
+        # rospy.loginfo(f'Right foot contact_start: {self.right_foot_contact_start}')
 
         def feet_gait_procedure(foot):
             """Deploy the feet gait procedure based on active leg"""
             
             # Only set new swing times if we're not already in a swing or if we're switching feet
-            if not self.is_swing_time_set or self.current_swing_foot != foot:
+            if not self.is_swing_time_set:
                 self.start_swing_time = self.sim_time
                 self.end_swing_time = self.start_swing_time + self.swing_duration
                 self.last_swing_time = self.start_swing_time
                 self.is_swing_time_set = True
-                self.current_swing_foot = foot
                 rospy.loginfo(f'Starting new swing for {foot} foot')
             
             # Check if the current swing is complete
@@ -283,21 +290,20 @@ class G1MujocoSimulation:
                 self.is_swing_time_set = False
                 self.last_swing_time = self.sim_time
                 # The other foot will be chosen on the next call
-            
             # To match left, right with the order of the tasks
             if foot == "right":
                 foot_in_swing, foot_in_contact = (0, 1)
                 wrench_indexes_swing = [0, 1]
-                wrench_indexes_contact = [2, 3] 
+                wrench_indexes_contact = [2, 3]
+                swing_task_reference_pose = self.left_foot_contact_start               
             else:
                 foot_in_swing, foot_in_contact = (1, 0)
                 wrench_indexes_swing = [2, 3]
                 wrench_indexes_contact = [0, 1]
-            
+                swing_task_reference_pose = self.right_foot_contact_start 
             # Contact related
             WBID.contact_tasks[foot_in_contact].setActive(True)
             WBID.swing_tasks[foot_in_contact].setActive(False)
-            WBID.swing_tasks[foot_in_contact].reset()
             WBID.contact_tasks[foot_in_contact].reset()
             WBID.wrench_limits[wrench_indexes_contact[0]].setWrenchLimits(np.array([0.0, 0.0, 10.0]), np.array([1000.0, 1000.0, 1000.0]))
             WBID.wrench_limits[wrench_indexes_contact[1]].setWrenchLimits(np.array([0.0, 0.0, 10.0]), np.array([1000.0, 1000.0, 1000.0]))
@@ -306,15 +312,12 @@ class G1MujocoSimulation:
             WBID.contact_tasks[foot_in_swing].setActive(False)
             WBID.swing_tasks[foot_in_swing].setActive(True)
             # I need to reset because if i do setActive(True) it will not reset the reference
-            WBID.contact_tasks[foot_in_swing].reset()
             WBID.swing_tasks[foot_in_swing].reset()
             WBID.wrench_limits[wrench_indexes_swing[0]].setWrenchLimits(np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]))
             WBID.wrench_limits[wrench_indexes_swing[1]].setWrenchLimits(np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]))
-            swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc = WBID.swing_tasks[foot_in_swing].getReference()
-            
-            # Maximum swing height
-            max_swing_height = 0.01
-
+                
+            # Maximum swing height Wrong need fixing
+            max_swing_height = 0.001
             # Calculate swing progress (0.0 to 1.0)
             cycle_progress = (self.sim_time - self.start_swing_time) / self.swing_duration
             
@@ -323,22 +326,22 @@ class G1MujocoSimulation:
                 # Rise proportionately from 0 to max_swing_height
                 delta_z = max_swing_height * (cycle_progress / 0.5)
                 swing_task_reference_pose.translation += (0., 0., delta_z)
-                WBID.swing_tasks[foot_in_swing].setReference(swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc)
+                WBID.swing_tasks[foot_in_swing].setReference(swing_task_reference_pose, np.zeros((6,1)), np.zeros((6,1)))
                 rospy.loginfo(f'{foot} in contact, other foot swinging up, progress: {cycle_progress:.2f}')
             else:  # Second half - swing down
                 # Fall proportionately from max_swing_height back to 0
                 delta_z = max_swing_height * ((1.0 - cycle_progress) / 0.5)
                 swing_task_reference_pose.translation += (0., 0., -delta_z)
-                WBID.swing_tasks[foot_in_swing].setReference(swing_task_reference_pose, swing_task_reference_vel, swing_task_reference_acc)
+                WBID.swing_tasks[foot_in_swing].setReference(swing_task_reference_pose, np.zeros((6,1)), np.zeros((6,1)))
                 rospy.loginfo(f'{foot} in contact, other foot swinging down, progress: {cycle_progress:.2f}')
             
             # Publish the reference foot position
-            # publish_feet_reference(pub_reference_feet_position,
-            #                        feet_ref_pos_msg,
-            #                        foot,
-            #                        swing_task_reference_pose,
-            #                        foot_positions_curr,
-            #                        self.sim_time)
+            publish_feet_reference(pub_reference_feet_position,
+                                feet_ref_pos_msg,
+                                foot,
+                                swing_task_reference_pose,
+                                foot_positions_curr,
+                                self.sim_time)
 
         if left_foot_active and right_foot_active:
             rospy.loginfo("Double support phase")
