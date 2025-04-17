@@ -67,7 +67,7 @@ class WholeBodyID:
         self.base = Cartesian(
             "base", self.model, "world", "pelvis", self.variables.getVariable("qddot")
         )
-        base_gain = 20.
+        base_gain = 12.
         base_Kp = np.diag([1., 1., 1., 10., 10., 20.]) * base_gain
         self.base.setKp(base_Kp)
         base_Kd = np.diag([1., 1., 1., 50., 50., 50.]) * base_gain
@@ -125,7 +125,7 @@ class WholeBodyID:
                     self.variables.getVariable(contact_frame))
             )
 
-        posture_gain = 80.
+        posture_gain = 200.
         posture = Postural(self.model, self.variables.getVariable("qddot"))
         posture_Kp = np.eye(self.model.nv) * 2. * posture_gain
         posture.setKp(posture_Kp)
@@ -159,22 +159,22 @@ class WholeBodyID:
 
         min_force_weight = 1e-5
         # For the self.base task taking only the orientation part
-        self.stack = 1.0*self.com + 0.4*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28])+ 0.005*req_qddot 
-        # self.stack += 0.1*angular_momentum
+        self.stack = 3.5*self.com + 0.4*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28])+ 0.005*req_qddot 
+        self.stack += 0.5*angular_momentum
         # self.stack += min_force_weight*req_forces_0 + min_force_weight*req_forces_1 + min_force_weight*req_forces_2 + min_force_weight*req_forces_3
         self.stack += 1e-8 * MinimizeVariable("min_torques", torques)
         # 
-        self.stack += 1.0*(self.base%[3, 4 ,5])
+        self.stack += 3.5*(self.base%[3, 4 ,5])
         
         for i in range(len(self.cartesian_contact_task_frames)):
             self.contact_tasks[i].setLambda(300.0, 20.)
-            self.stack = self.stack + 3.0 * (self.contact_tasks[i]) + 2.9*self.swing_tasks[i]
+            self.stack = self.stack + 4.5 * (self.contact_tasks[i]) + 2.9*self.swing_tasks[i]
 
         # Task for factual - fdesired
         self.wrench_tasks = list()
         for contact_frame in self.contact_frames:
             self.wrench_tasks.append(MinimizeVariable(contact_frame, self.variables.getVariable(contact_frame)))
-            self.stack = self.stack + 0.7*(self.wrench_tasks[-1])
+            self.stack = self.stack + 1.7*(self.wrench_tasks[-1])
         
         self.dynamics_constraint = DynamicFeasibility(
             "floating_base_dynamics",
@@ -275,7 +275,7 @@ class WholeBodyID:
             # The linear is just to satisfy opensot since is omitted in the stack
             linear_acceleration_reference = np.zeros((3,1))
             angular_acceleration_reference = inertia_torso_inv @ sum_r_cross_omega.T
-            # angular_acceleration_reference = np.zeros((3,1))
+            angular_acceleration_reference = np.zeros((3,1))
 
             acceleration_reference = np.vstack((linear_acceleration_reference, angular_acceleration_reference)) 
             # Pass the updated homogeneous transformation.
