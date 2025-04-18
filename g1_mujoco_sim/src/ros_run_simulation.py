@@ -212,8 +212,7 @@ class G1MujocoSimulation:
         for i, contact_point in enumerate(msg.contacts):
             self.u_opt0[i * 3: i * 3 + 3] = [contact_point.force.x, contact_point.force.y, contact_point.force.z]
             self.contact_states[i] = contact_point.active
-            
-        # print("u_opt0\n", self.u_opt0)
+            self.swing_task_reference_pose.translation = (contact_point.position.x, contact_point.position.y, contact_point.position.z)
 
     def permute_muj_to_xbi(self, xbi_qpos):
         """Convert mujoco qpos to xbi qpos."""
@@ -295,12 +294,12 @@ class G1MujocoSimulation:
                 foot_in_swing, foot_in_contact = (0, 1)
                 wrench_indexes_swing = [0, 1]
                 wrench_indexes_contact = [2, 3]
-                swing_task_reference_pose = self.left_foot_contact_start               
+                self.swing_task_reference_pose = self.left_foot_contact_start               
             else:
                 foot_in_swing, foot_in_contact = (1, 0)
                 wrench_indexes_swing = [2, 3]
                 wrench_indexes_contact = [0, 1]
-                swing_task_reference_pose = self.right_foot_contact_start 
+                self.swing_task_reference_pose = self.right_foot_contact_start 
             # Contact related
             WBID.contact_tasks[foot_in_contact].setActive(True)
             WBID.swing_tasks[foot_in_contact].setActive(False)
@@ -325,21 +324,21 @@ class G1MujocoSimulation:
             if cycle_progress < 0.5:  # First half - swing up
                 # Rise proportionately from 0 to max_swing_height
                 delta_z = max_swing_height * (cycle_progress / 0.5)
-                swing_task_reference_pose.translation += (0., 0., delta_z)
-                WBID.swing_tasks[foot_in_swing].setReference(swing_task_reference_pose, np.zeros((6,1)), np.zeros((6,1)))
+                self.swing_task_reference_pose.translation += (0., 0., delta_z)
+                WBID.swing_tasks[foot_in_swing].setReference(self.swing_task_reference_pose, np.zeros((6,1)), np.zeros((6,1)))
                 rospy.loginfo(f'{foot} in contact, other foot swinging up, progress: {cycle_progress:.2f}')
             else:  # Second half - swing down
                 # Fall proportionately from max_swing_height back to 0
                 delta_z = max_swing_height * ((1.0 - cycle_progress) / 0.5)
-                swing_task_reference_pose.translation += (0., 0., -delta_z)
-                WBID.swing_tasks[foot_in_swing].setReference(swing_task_reference_pose, np.zeros((6,1)), np.zeros((6,1)))
+                self.swing_task_reference_pose.translation += (0., 0., -delta_z)
+                WBID.swing_tasks[foot_in_swing].setReference(self.swing_task_reference_pose, np.zeros((6,1)), np.zeros((6,1)))
                 rospy.loginfo(f'{foot} in contact, other foot swinging down, progress: {cycle_progress:.2f}')
             
             # Publish the reference foot position
             publish_feet_reference(pub_reference_feet_position,
                                 feet_ref_pos_msg,
                                 foot,
-                                swing_task_reference_pose,
+                                self.swing_task_reference_pose,
                                 foot_positions_curr,
                                 self.sim_time)
 
@@ -370,10 +369,6 @@ class G1MujocoSimulation:
         # Exclude floating base
         self.data.ctrl = tau[6:]
 
-        # self.pass_count += 1
-        # if self.pass_count >= 2000:
-        #     exit()
-
         mujoco.mj_step(self.model, self.data)
         
         permuted_qpos = self.permute_muj_to_xbi(self.data.qpos)
@@ -384,8 +379,6 @@ class G1MujocoSimulation:
         WBID.updateModel(permuted_qpos, joints_velocity_local)
         
         # Publish the current state
-        #permuted_qpos = self.permute_muj_to_xbi(self.data.qpos)
-        # Maybe I need the torso orientation not the floating base
         
         # World Frame
         base_orientation_curr = tf.transformations.euler_from_matrix(WBID.model.getPose("pelvis").linear)
@@ -420,6 +413,9 @@ class G1MujocoSimulation:
 
         # Publish the com horizon in rviz
         self.rviz_srbd_full.publishPointTrj(self.srbd_recieved.states_horizon, rospy.Time(self.sim_time), "CoM")
+
+        # Publish the contact frames in rviz
+        self.rviz_srbd_full.publishContactFrames(rospy.Time(self.sim_time), self.srbd_recieved, WBID.contact_frames)
 
         # Publish the simulation time
         sim_time_msg = Clock()
@@ -469,6 +465,12 @@ if __name__ == "__main__":
 
         # Setup the whole body ID
         WBID = WholeBodyID(sim.urdf, sim.sim_timestep, q_init)
+        
+        # Just to get the type of the object
+        sim.swing_task_reference_pose = WBID.model.getPose("left_foot_point_contact")
+        sim.swing_task_reference_pose.translation = (0.0, 0.0, 0.0)
+        sim.swing_task_reference_pose.linear = np.eye(3)
+        
         WBID.setupProblem()
         # Run the simulation     
         sim.run()

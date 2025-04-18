@@ -5,9 +5,8 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /RobotModel1
+        - /TF1/Frames1
         - /TF1/Tree1
-        - /ComHorizon1/Status1
       Splitter Ratio: 0.5
     Tree Height: 490
   - Class: rviz/Selection
@@ -347,6 +346,14 @@ Visualization Manager:
           Value: false
         logo_link:
           Value: false
+        marker_left_foot_line_contact_lower:
+          Value: false
+        marker_left_foot_line_contact_upper:
+          Value: false
+        marker_right_foot_line_contact_lower:
+          Value: false
+        marker_right_foot_line_contact_upper:
+          Value: false
         mid360_link:
           Value: false
         pelvis:
@@ -409,6 +416,14 @@ Visualization Manager:
       Show Names: true
       Tree:
         world:
+          marker_left_foot_line_contact_lower:
+            {}
+          marker_left_foot_line_contact_upper:
+            {}
+          marker_right_foot_line_contact_lower:
+            {}
+          marker_right_foot_line_contact_upper:
+            {}
           pelvis:
             left_hip_pitch_link:
               left_hip_roll_link:
@@ -550,7 +565,7 @@ Visualization Manager:
       Marker Topic: /srbd_marker
       Name: SrbdModel
       Namespaces:
-        {}
+        SRBD: true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -559,6 +574,14 @@ Visualization Manager:
       Name: ComHorizon
       Namespaces:
         SRBD: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /contacts
+      Name: ContactsMPC
+      Namespaces:
+        {}
       Queue Size: 100
       Value: true
   Enabled: true
@@ -589,7 +612,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.7973474264144897
+      Distance: 1.184543490409851
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -597,17 +620,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -0.05645556002855301
-        Y: 0.012069514952600002
-        Z: 0.4971284866333008
+        X: -0.034577082842588425
+        Y: -0.22821930050849915
+        Z: 0.1671685427427292
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.24039916694164276
+      Pitch: 0.08039946854114532
       Target Frame: <Fixed Frame>
-      Yaw: 3.1836018562316895
+      Yaw: 3.7636022567749023
     Saved: ~
 Window Geometry:
   Displays:
@@ -626,4 +649,4 @@ Window Geometry:
     collapsed: true
   Width: 1440
   X: 227
-  Y: 298
+  Y: 261

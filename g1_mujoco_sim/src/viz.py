@@ -154,41 +154,48 @@ class RvizSrbdFullBody:
 
         pub = rospy.Publisher(name + "_trj", Marker, queue_size=10).publish(marker)
         
-        # Need to publish from MPC still not ready
-        # marker_array = MarkerArray()
-        # for i, contact_frame in enumerate(contact_frames):
-        #     w_T_c = TransformStamped()
+    def publishContactFrames(self, t, srbd_msg, contact_frames):
+        marker_array = MarkerArray()
 
-        #     try:
-        #         # print("foot position: ", srbd_msg.contacts[i].position.x, srbd_msg.contacts[i].position.y, srbd_msg.contacts[i].position.z)
-        #         w_T_c.transform.translation.x = srbd_msg.contacts[i].position.x
-        #         w_T_c.transform.translation.y = srbd_msg.contacts[i].position.y
-        #         w_T_c.transform.translation.z = srbd_msg.contacts[i].position.z
-        #         w_T_c.transform.rotation.x = 0.
-        #         w_T_c.transform.rotation.y = 0.
-        #         w_T_c.transform.rotation.z = 0.
-        #         w_T_c.transform.rotation.w = 1.
-        #         w_T_c.header.frame_id = "world"
-        #         w_T_c.child_frame_id = "srbd_" + contact_frame
-        #         w_T_c.header.stamp = t
-        #         self.broadcaster.sendTransformMessage(w_T_c)
-        #     except Exception as e:
-        #         print(e)
+        # Check if states_horizon has elements before accessing
+        if len(srbd_msg.states_horizon) == 0:
+            # Handle empty states_horizon case - return early
+            rospy.logwarn("Empty states_horizon in srbd_msg, skipping visualization")
+            return
 
-        #     m = Marker()
-        #     m.header.frame_id = "srbd_" + contact_frame
-        #     m.header.stamp = t
-        #     m.ns = "SRBD"
-        #     m.id = i + 1
-        #     m.type = Marker.SPHERE
-        #     m.action = Marker.ADD
-        #     m.pose.position.x = marker.pose.position.y = marker.pose.position.z = 0.
-        #     m.pose.orientation.x = marker.pose.orientation.y = marker.pose.orientation.z = 0.
-        #     m.pose.orientation.w = 1.
-        #     m.scale.x = m.scale.y = m.scale.z = 0.04
-        #     m.color.a = 0.8
-        #     m.color.r = m.color.g = 0.0
-        #     m.color.b = 1.0
-        #     marker_array.markers.append(m)
+        for i, contact_frame in enumerate(contact_frames):
+            w_T_c = TransformStamped()
 
-        # pub2 = rospy.Publisher('contacts', MarkerArray, queue_size=10).publish(marker_array)
+            try:
+                w_T_c.transform.translation.x = srbd_msg.contacts[i].position.x
+                w_T_c.transform.translation.y = srbd_msg.contacts[i].position.y
+                w_T_c.transform.translation.z = srbd_msg.contacts[i].position.z
+                w_T_c.transform.rotation.x = 0.
+                w_T_c.transform.rotation.y = 0.
+                w_T_c.transform.rotation.z = 0.
+                w_T_c.transform.rotation.w = 1.
+                w_T_c.header.frame_id = "world"
+                w_T_c.child_frame_id = "marker_" + contact_frame
+                w_T_c.header.stamp = t
+                rospy.loginfo("foot position: %f, %f, %f", srbd_msg.contacts[i].position.x, srbd_msg.contacts[i].position.y, srbd_msg.contacts[i].position.z)
+                self.broadcaster.sendTransformMessage(w_T_c)
+            except Exception as e:
+                print(e)
+
+            m = Marker()
+            m.header.frame_id = "marker_" + contact_frame
+            m.header.stamp = t
+            m.ns = "SRBD"
+            m.id = 1000 + i + 1
+            m.type = Marker.SPHERE
+            m.action = Marker.ADD
+            m.pose.position.x = m.pose.position.y = m.pose.position.z = 0.
+            m.pose.orientation.x = m.pose.orientation.y = m.pose.orientation.z = 0.
+            m.pose.orientation.w = 1.
+            m.scale.x = m.scale.y = m.scale.z = 0.04
+            m.color.a = 0.8
+            m.color.r = m.color.g = 0.0
+            m.color.b = 1.0
+            marker_array.markers.append(m)
+
+        pub2 = rospy.Publisher('contacts', MarkerArray, queue_size=10).publish(marker_array)
