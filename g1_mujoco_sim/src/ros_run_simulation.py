@@ -223,6 +223,86 @@ class G1MujocoSimulation:
         xbi_qpos_perm[5] = xbi_qpos[6]
         xbi_qpos_perm[6] = xbi_qpos[3]
         return xbi_qpos_perm
+    
+    def switch_procedure(self, foot, foot_in_contact, foot_in_swing, wrench_indexes_contact, wrench_indexes_swing):
+        # Contact related
+        WBID.contact_tasks[foot_in_contact].setActive(True)
+        WBID.swing_tasks[foot_in_contact].setActive(False)
+        WBID.contact_tasks[foot_in_contact].reset()
+        WBID.wrench_limits[wrench_indexes_contact[0]].setWrenchLimits(np.array([0.0, 0.0, 10.0]), np.array([1000.0, 1000.0, 1000.0]))
+        WBID.wrench_limits[wrench_indexes_contact[1]].setWrenchLimits(np.array([0.0, 0.0, 10.0]), np.array([1000.0, 1000.0, 1000.0]))
+
+        # Swing related                        
+        WBID.contact_tasks[foot_in_swing].setActive(False)
+        WBID.swing_tasks[foot_in_swing].setActive(True)
+        # I need to reset because if i do setActive(True) it will not reset the reference
+        WBID.swing_tasks[foot_in_swing].reset()
+        WBID.wrench_limits[wrench_indexes_swing[0]].setWrenchLimits(np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]))
+        WBID.wrench_limits[wrench_indexes_swing[1]].setWrenchLimits(np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]))
+
+    def calculate_swing_foot(self, foot, foot_in_swing, max_swing_height):
+        # Calculate swing progress (0.0 to 1.0)
+        cycle_progress = (self.sim_time - self.start_swing_time) / self.swing_duration
+        
+        # Set the reference for the foot to rise or lower based on cycle progress
+        if cycle_progress < 0.5:  # First half - swing up
+            # Rise proportionately from 0 to max_swing_height
+            delta_z = max_swing_height * (cycle_progress / 0.5)
+            self.swing_task_reference_pose.translation += (0., 0., delta_z)
+            WBID.swing_tasks[foot_in_swing].setReference(self.swing_task_reference_pose, np.zeros((6,1)), np.zeros((6,1)))
+            rospy.loginfo(f'{foot} in contact, other foot swinging up, progress: {cycle_progress:.2f}')
+        else:  # Second half - swing down
+            # Fall proportionately from max_swing_height back to 0
+            delta_z = max_swing_height * ((1.0 - cycle_progress) / 0.5)
+            self.swing_task_reference_pose.translation += (0., 0., -delta_z)
+            WBID.swing_tasks[foot_in_swing].setReference(self.swing_task_reference_pose, np.zeros((6,1)), np.zeros((6,1)))
+            rospy.loginfo(f'{foot} in contact, other foot swinging down, progress: {cycle_progress:.2f}')
+           
+
+    def feet_gait_procedure(self, foot, foot_positions_curr, pub_reference_feet_position, feet_ref_pos_msg):
+        """Deploy the feet gait procedure based on active leg"""
+        
+        # To match left, right with the order of the tasks
+        if foot == "right":
+            foot_in_swing, foot_in_contact = (0, 1)
+            wrench_indexes_swing = [0, 1]
+            wrench_indexes_contact = [2, 3]
+            self.swing_task_reference_pose = self.left_foot_contact_start               
+        else:
+            foot_in_swing, foot_in_contact = (1, 0)
+            wrench_indexes_swing = [2, 3]
+            wrench_indexes_contact = [0, 1]
+            self.swing_task_reference_pose = self.right_foot_contact_start 
+        
+        # Only set new swing times if we're not already in a swing or if we're switching feet
+        if not self.is_swing_time_set:
+            self.switch_procedure(foot, foot_in_contact, foot_in_swing, wrench_indexes_contact, wrench_indexes_swing)  
+            self.start_swing_time = self.sim_time
+            self.end_swing_time = self.start_swing_time + self.swing_duration
+            self.last_swing_time = self.start_swing_time
+            self.is_swing_time_set = True
+            rospy.loginfo(f'Starting new swing for {foot} foot')
+        
+        # Check if the current swing is complete
+        if self.is_swing_time_set and self.sim_time >= self.end_swing_time:
+            self.switch_procedure(foot, foot_in_contact, foot_in_swing, wrench_indexes_contact, wrench_indexes_swing)  
+            # Reset the swing time and alternate to the other foot for the next cycle
+            self.is_swing_time_set = False
+            self.last_swing_time = self.sim_time
+            # The other foot will be chosen on the next call
+        
+        # Maximum swing height Wrong need fixing
+        max_swing_height = 0.1
+
+        self.calculate_swing_foot(foot, foot_in_swing, max_swing_height)
+
+        # Publish the reference foot position
+        publish_feet_reference(pub_reference_feet_position,
+                            feet_ref_pos_msg,
+                            foot,
+                            self.swing_task_reference_pose,
+                            foot_positions_curr,
+                            self.sim_time)
        
     def sim_step(self, pub_srbd, pub_reference_feet_position, feet_ref_pos_msg, contact_point_msg):
         """Perform a single simulation step."""
@@ -272,84 +352,16 @@ class G1MujocoSimulation:
         # rospy.loginfo(f'Left foot contact_start: {self.left_foot_contact_start}')
         # rospy.loginfo(f'Right foot contact_start: {self.right_foot_contact_start}')
 
-        def feet_gait_procedure(foot):
-            """Deploy the feet gait procedure based on active leg"""
-            
-            # Only set new swing times if we're not already in a swing or if we're switching feet
-            if not self.is_swing_time_set:
-                self.start_swing_time = self.sim_time
-                self.end_swing_time = self.start_swing_time + self.swing_duration
-                self.last_swing_time = self.start_swing_time
-                self.is_swing_time_set = True
-                rospy.loginfo(f'Starting new swing for {foot} foot')
-            
-            # Check if the current swing is complete
-            if self.is_swing_time_set and self.sim_time >= self.end_swing_time:
-                # Reset the swing time and alternate to the other foot for the next cycle
-                self.is_swing_time_set = False
-                self.last_swing_time = self.sim_time
-                # The other foot will be chosen on the next call
-            # To match left, right with the order of the tasks
-            if foot == "right":
-                foot_in_swing, foot_in_contact = (0, 1)
-                wrench_indexes_swing = [0, 1]
-                wrench_indexes_contact = [2, 3]
-                self.swing_task_reference_pose = self.left_foot_contact_start               
-            else:
-                foot_in_swing, foot_in_contact = (1, 0)
-                wrench_indexes_swing = [2, 3]
-                wrench_indexes_contact = [0, 1]
-                self.swing_task_reference_pose = self.right_foot_contact_start 
-            # Contact related
-            WBID.contact_tasks[foot_in_contact].setActive(True)
-            WBID.swing_tasks[foot_in_contact].setActive(False)
-            WBID.contact_tasks[foot_in_contact].reset()
-            WBID.wrench_limits[wrench_indexes_contact[0]].setWrenchLimits(np.array([0.0, 0.0, 10.0]), np.array([1000.0, 1000.0, 1000.0]))
-            WBID.wrench_limits[wrench_indexes_contact[1]].setWrenchLimits(np.array([0.0, 0.0, 10.0]), np.array([1000.0, 1000.0, 1000.0]))
 
-            # Swing related                        
-            WBID.contact_tasks[foot_in_swing].setActive(False)
-            WBID.swing_tasks[foot_in_swing].setActive(True)
-            # I need to reset because if i do setActive(True) it will not reset the reference
-            WBID.swing_tasks[foot_in_swing].reset()
-            WBID.wrench_limits[wrench_indexes_swing[0]].setWrenchLimits(np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]))
-            WBID.wrench_limits[wrench_indexes_swing[1]].setWrenchLimits(np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]))
-                
-            # Maximum swing height Wrong need fixing
-            max_swing_height = 0.001
-            # Calculate swing progress (0.0 to 1.0)
-            cycle_progress = (self.sim_time - self.start_swing_time) / self.swing_duration
-            
-            # Set the reference for the foot to rise or lower based on cycle progress
-            if cycle_progress < 0.5:  # First half - swing up
-                # Rise proportionately from 0 to max_swing_height
-                delta_z = max_swing_height * (cycle_progress / 0.5)
-                self.swing_task_reference_pose.translation += (0., 0., delta_z)
-                WBID.swing_tasks[foot_in_swing].setReference(self.swing_task_reference_pose, np.zeros((6,1)), np.zeros((6,1)))
-                rospy.loginfo(f'{foot} in contact, other foot swinging up, progress: {cycle_progress:.2f}')
-            else:  # Second half - swing down
-                # Fall proportionately from max_swing_height back to 0
-                delta_z = max_swing_height * ((1.0 - cycle_progress) / 0.5)
-                self.swing_task_reference_pose.translation += (0., 0., -delta_z)
-                WBID.swing_tasks[foot_in_swing].setReference(self.swing_task_reference_pose, np.zeros((6,1)), np.zeros((6,1)))
-                rospy.loginfo(f'{foot} in contact, other foot swinging down, progress: {cycle_progress:.2f}')
-            
-            # Publish the reference foot position
-            publish_feet_reference(pub_reference_feet_position,
-                                feet_ref_pos_msg,
-                                foot,
-                                self.swing_task_reference_pose,
-                                foot_positions_curr,
-                                self.sim_time)
 
         if left_foot_active and right_foot_active:
             rospy.loginfo("Double support phase")
             WBID.swing_tasks[0].setActive(False)
             WBID.swing_tasks[1].setActive(False)
         elif left_foot_active:
-            feet_gait_procedure("left")
+            self.feet_gait_procedure("left", foot_positions_curr, pub_reference_feet_position, feet_ref_pos_msg)
         elif right_foot_active:
-            feet_gait_procedure("right")
+            self.feet_gait_procedure("right", foot_positions_curr, pub_reference_feet_position, feet_ref_pos_msg)
 
         # Log less frequently to avoid spamming the console
         if self.sim_time - getattr(self, 'last_log_time', 0.0) >= 0.5:

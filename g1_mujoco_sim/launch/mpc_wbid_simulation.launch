@@ -3,7 +3,7 @@
   <node name="ros_run_simulation" pkg="g1_mujoco_sim" type="ros_run_simulation.py" output="screen" />
 
   <!-- Launch MPC to WBID node -->
-  <node name="mpc_to_wbid" pkg="g1_mpc" type="mpc_to_wbid_node" output="screen" />
+  <node name="mpc_to_wbid" pkg="g1_mpc" type="mpc_to_wbid_node" output="screen" required="true" />
 
   <!-- Send the g1 robot XML to param server -->
   <param name="robot_description" textfile="$(find g1_description)/g1_23dof.urdf"/>

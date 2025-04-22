@@ -177,7 +177,7 @@ class RvizSrbdFullBody:
                 w_T_c.header.frame_id = "world"
                 w_T_c.child_frame_id = "marker_" + contact_frame
                 w_T_c.header.stamp = t
-                rospy.loginfo("foot position: %f, %f, %f", srbd_msg.contacts[i].position.x, srbd_msg.contacts[i].position.y, srbd_msg.contacts[i].position.z)
+                # rospy.loginfo("foot position: %f, %f, %f", srbd_msg.contacts[i].position.x, srbd_msg.contacts[i].position.y, srbd_msg.contacts[i].position.z)
                 self.broadcaster.sendTransformMessage(w_T_c)
             except Exception as e:
                 print(e)
