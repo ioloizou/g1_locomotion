@@ -29,7 +29,7 @@
   <joint name="dummy" type="floating">
     <parent link="world"/>
     <child link="pelvis"/>
-    <origin rpy="0 0 0" xyz="0.0 0.0 -0.03"/>
+    <!-- <origin rpy="0 0 0" xyz="0.0 0.0 -0.03"/> -->
   </joint>
 
   <link name="pelvis_contour_link">
