@@ -24,6 +24,7 @@ catkin_install_python(PROGRAMS
   src/config.py
   src/wbid.py
   src/viz.py
+  src/swing_trajectory.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

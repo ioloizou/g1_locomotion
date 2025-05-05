@@ -7,6 +7,7 @@ import rospkg
 import rospy
 import tf
 import numpy as np
+import swing_trajectory
 from ttictoc import tic, toc
 from pal_statistics import StatisticsRegistry
 from rosgraph_msgs.msg import Clock
@@ -212,8 +213,9 @@ class G1MujocoSimulation:
         for i, contact_point in enumerate(msg.contacts):
             self.u_opt0[i * 3: i * 3 + 3] = [contact_point.force.x, contact_point.force.y, contact_point.force.z]
             self.contact_states[i] = contact_point.active
-            self.swing_task_reference_pose.translation = (contact_point.position.x, contact_point.position.y, contact_point.position.z)
-
+    
+        self.foot_in_swing_final_position = [msg.landing_position.x, msg.landing_position.y, msg.landing_position.z]
+    
     def permute_muj_to_xbi(self, xbi_qpos):
         """Convert mujoco qpos to xbi qpos."""
         # Place the 4th element at the 7th position
@@ -224,7 +226,7 @@ class G1MujocoSimulation:
         xbi_qpos_perm[6] = xbi_qpos[3]
         return xbi_qpos_perm
     
-    def switch_procedure(self, foot, foot_in_contact, foot_in_swing, wrench_indexes_contact, wrench_indexes_swing):
+    def switch_procedure(self, foot_in_contact, foot_in_swing, wrench_indexes_contact, wrench_indexes_swing):
         # Contact related
         WBID.contact_tasks[foot_in_contact].setActive(True)
         WBID.swing_tasks[foot_in_contact].setActive(False)
@@ -240,23 +242,26 @@ class G1MujocoSimulation:
         WBID.wrench_limits[wrench_indexes_swing[0]].setWrenchLimits(np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]))
         WBID.wrench_limits[wrench_indexes_swing[1]].setWrenchLimits(np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]))
 
-    def calculate_swing_foot(self, foot, foot_in_swing, max_swing_height):
+    def calculate_swing_foot(self, foot, foot_in_swing):
         # Calculate swing progress (0.0 to 1.0)
         cycle_progress = (self.sim_time - self.start_swing_time) / self.swing_duration
         
-        # Set the reference for the foot to rise or lower based on cycle progress
-        if cycle_progress < 0.5:  # First half - swing up
-            # Rise proportionately from 0 to max_swing_height
-            delta_z = max_swing_height * (cycle_progress / 0.5)
-            self.swing_task_reference_pose.translation += (0., 0., delta_z)
-            WBID.swing_tasks[foot_in_swing].setReference(self.swing_task_reference_pose, np.zeros((6,1)), np.zeros((6,1)))
-            rospy.loginfo(f'{foot} in contact, other foot swinging up, progress: {cycle_progress:.2f}')
-        else:  # Second half - swing down
-            # Fall proportionately from max_swing_height back to 0
-            delta_z = max_swing_height * ((1.0 - cycle_progress) / 0.5)
-            self.swing_task_reference_pose.translation += (0., 0., -delta_z)
-            WBID.swing_tasks[foot_in_swing].setReference(self.swing_task_reference_pose, np.zeros((6,1)), np.zeros((6,1)))
-            rospy.loginfo(f'{foot} in contact, other foot swinging down, progress: {cycle_progress:.2f}')
+        swing_position_x, swing_position_y = self.trajectory.calculate_position_xy(cycle_progress)
+        
+        swing_position_z = self.trajectory.calculate_position_z(cycle_progress)
+        swing_velocity_z = self.trajectory.calculate_velocity_z(cycle_progress)
+        swing_acceleration_z = self.trajectory.calculate_acceleration_z(cycle_progress)
+
+        swing_velocity_reference = np.array([0.0, 0.0, swing_velocity_z, 0.0, 0.0, 0.0])
+        swing_acceleration_reference = np.array([0.0, 0.0, swing_acceleration_z, 0.0, 0.0, 0.0])
+
+        self.swing_task_reference_pose.translation += (swing_position_x, swing_position_y, swing_position_z)
+        WBID.swing_tasks[foot_in_swing].setReference(self.swing_task_reference_pose, 
+                                                     swing_velocity_reference, 
+                                                     swing_acceleration_reference)
+        
+        rospy.loginfo(f'{foot} in contact, other foot swinging up, progress: {cycle_progress:.2f}')
+
            
 
     def feet_gait_procedure(self, foot, foot_positions_curr, pub_reference_feet_position, feet_ref_pos_msg):
@@ -276,7 +281,40 @@ class G1MujocoSimulation:
         
         # Only set new swing times if we're not already in a swing or if we're switching feet
         if not self.is_swing_time_set:
-            self.switch_procedure(foot, foot_in_contact, foot_in_swing, wrench_indexes_contact, wrench_indexes_swing)  
+            self.switch_procedure(foot_in_contact, foot_in_swing, wrench_indexes_contact, wrench_indexes_swing)
+
+            if foot == "right":
+                # Since the foot in contact is the other foot, we need to set the reference pose for the swing foot
+                foot_in_swing_pos_start = WBID.model.getPose("left_foot_point_contact").translation
+            else:
+                foot_in_swing_pos_start = WBID.model.getPose("right_foot_point_contact").translation
+
+            # Maximum swing height
+            max_swing_height = 0.1
+            
+            # Create a new swing trajectory
+            self.trajectory = swing_trajectory.SwingTrajectory()
+            # Set the initial and final positions for the swing foot for x, y
+            self.trajectory.set_positions_xy(foot_in_swing_pos_start[0], 
+                                        foot_in_swing_pos_start[1], 
+                                        self.foot_in_swing_final_position[0], 
+                                        self.foot_in_swing_final_position[1])
+            
+            # Set the initial and final positions for the swing foot for z
+            # The middle position is set to the maximum swing height
+            self.trajectory.set_positions_z(foot_in_swing_pos_start[2],
+                                        max_swing_height,
+                                        foot_in_swing_pos_start[2])
+            
+            # Calculate the coefficients for the swing trajectory
+            self.trajectory.calculate_coeff()
+
+            # Debug all foot positions
+            rospy.loginfo_throttle(0.1, f'Foot positions: {foot_positions_curr}')
+            rospy.loginfo_throttle(0.1, f'Foot in swing start position: {foot_in_swing_pos_start}')
+            rospy.loginfo_throttle(0.1, f'Foot in swing final position: {self.foot_in_swing_final_position}')
+            rospy.loginfo_throttle(0.1, f'Foot in swing max height: {max_swing_height}')
+
             self.start_swing_time = self.sim_time
             self.end_swing_time = self.start_swing_time + self.swing_duration
             self.last_swing_time = self.start_swing_time
@@ -285,16 +323,10 @@ class G1MujocoSimulation:
         
         # Check if the current swing is complete
         if self.is_swing_time_set and self.sim_time >= self.end_swing_time:
-            self.switch_procedure(foot, foot_in_contact, foot_in_swing, wrench_indexes_contact, wrench_indexes_swing)  
-            # Reset the swing time and alternate to the other foot for the next cycle
+            # Reset the swing time
             self.is_swing_time_set = False
-            self.last_swing_time = self.sim_time
-            # The other foot will be chosen on the next call
-        
-        # Maximum swing height Wrong need fixing
-        max_swing_height = 0.1
 
-        self.calculate_swing_foot(foot, foot_in_swing, max_swing_height)
+        self.calculate_swing_foot(foot, foot_in_swing)
 
         # Publish the reference foot position
         publish_feet_reference(pub_reference_feet_position,
@@ -428,6 +460,9 @@ class G1MujocoSimulation:
 
         # Publish the contact frames in rviz
         self.rviz_srbd_full.publishContactFrames(rospy.Time(self.sim_time), self.srbd_recieved, WBID.contact_frames)
+
+        # Publish the landing position in rviz
+        self.rviz_srbd_full.publishLandingPosition(rospy.Time(self.sim_time), self.srbd_recieved)
 
         # Publish the simulation time
         sim_time_msg = Clock()

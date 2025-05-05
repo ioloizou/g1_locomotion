@@ -174,7 +174,7 @@ class WholeBodyID:
         self.wrench_tasks = list()
         for contact_frame in self.contact_frames:
             self.wrench_tasks.append(MinimizeVariable(contact_frame, self.variables.getVariable(contact_frame)))
-            self.stack = self.stack + 1.7*(self.wrench_tasks[-1])
+            self.stack = self.stack + 0.05*(self.wrench_tasks[-1])
         
         self.dynamics_constraint = DynamicFeasibility(
             "floating_base_dynamics",

@@ -8,3 +8,6 @@ State[] states_horizon
 
 # Array of contact points with their corresponding information
 ContactPoint[] contacts
+
+# Landing position of swinging leg (Point Contact used Not Line contact)
+geometry_msgs/Point landing_position

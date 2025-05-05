@@ -6,12 +6,6 @@ import rospy
 import tf
 from xbot2_interface import pyxbot2_interface as xbi
 
-
-
-
-
-
-
 class RvizSrbdFullBody:
     def __init__(self, urdf, contact_frames):
         self.pub = rospy.Publisher('joint_states', JointState, queue_size=1)
@@ -199,3 +193,44 @@ class RvizSrbdFullBody:
             marker_array.markers.append(m)
 
         pub2 = rospy.Publisher('contacts', MarkerArray, queue_size=10).publish(marker_array)
+
+    def publishLandingPosition(self, t, srbd_msg):
+
+        # Check if states_horizon has elements before accessing
+        if len(srbd_msg.states_horizon) == 0:
+            # Handle empty states_horizon case - return early
+            rospy.logwarn("Empty states_horizon in srbd_msg, skipping visualization")
+            return
+
+        w_T_c = TransformStamped()
+        try:
+            w_T_c.transform.translation.x = srbd_msg.landing_position.x
+            w_T_c.transform.translation.y = srbd_msg.landing_position.y
+            w_T_c.transform.translation.z = srbd_msg.landing_position.z
+            w_T_c.transform.rotation.x = 0.
+            w_T_c.transform.rotation.y = 0.
+            w_T_c.transform.rotation.z = 0.
+            w_T_c.transform.rotation.w = 1.
+            w_T_c.header.frame_id = "world"
+            w_T_c.child_frame_id = "marker_landing_position"
+            w_T_c.header.stamp = t
+            self.broadcaster.sendTransformMessage(w_T_c)
+        except Exception as e:
+            print(e)
+
+        m = Marker()
+        m.header.frame_id = "marker_landing_position"
+        m.header.stamp = t
+        m.ns = "SRBD"
+        m.id = 1100 + 1
+        m.type = Marker.SPHERE
+        m.action = Marker.ADD
+        m.pose.position.x = m.pose.position.y = m.pose.position.z = 0.
+        m.pose.orientation.x = m.pose.orientation.y = m.pose.orientation.z = 0.
+        m.pose.orientation.w = 1.
+        m.scale.x = m.scale.y = m.scale.z = 0.06
+        m.color.a = 0.8
+        m.color.r = m.color.g = 1.0
+        m.color.b = 0.0
+
+        pub3 = rospy.Publisher('Landing_position', Marker, queue_size=10).publish(m)
