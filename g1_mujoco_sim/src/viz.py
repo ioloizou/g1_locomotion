@@ -234,3 +234,31 @@ class RvizSrbdFullBody:
         m.color.b = 0.0
 
         pub3 = rospy.Publisher('Landing_position', Marker, queue_size=10).publish(m)
+
+    def publishSwingTrj(self, points, t, name, color = [0., 0., 1.]):
+        marker = Marker()
+        marker.header.frame_id = "world"
+        marker.header.stamp = t
+        marker.ns = "SRBD"
+        marker.id = 1200
+        marker.type = Marker.LINE_STRIP
+        marker.action = Marker.ADD
+
+        # Set the identity quaternion once before iterating over points
+        marker.pose.orientation.x = marker.pose.orientation.y = marker.pose.orientation.z = 0.
+        marker.pose.orientation.w = 1.
+
+        for i in range(len(points)):
+            p = Point()
+            p.x = points[i].position.x
+            p.y = points[i].position.y
+            p.z = points[i].position.z
+            marker.points.append(p)
+
+        marker.color.a = 1.
+        marker.scale.x = 0.005
+        marker.color.r = color[0]
+        marker.color.g = color[1]
+        marker.color.b = color[2]
+
+        pub = rospy.Publisher(name + "_trj", Marker, queue_size=10).publish(marker)
