@@ -148,6 +148,8 @@ class G1MujocoSimulation:
         self.last_swing_time = 0.0
         self.swing_duration = 0.25 
 
+        self.swing_traj = swing_trajectory.SwingTrajectory()
+
         # Find the model path
         rospack = rospkg.RosPack()
         pkg_path = rospack.get_path("g1_mujoco_sim")
@@ -246,16 +248,16 @@ class G1MujocoSimulation:
         # Calculate swing progress (0.0 to 1.0)
         cycle_progress = (self.sim_time - self.start_swing_time) / self.swing_duration
         
-        swing_position_x, swing_position_y = self.trajectory.calculate_position_xy(cycle_progress)
+        swing_position_x, swing_position_y = self.swing_traj.calculate_position_xy(cycle_progress)
         
-        swing_position_z = self.trajectory.calculate_position_z(cycle_progress)
-        swing_velocity_z = self.trajectory.calculate_velocity_z(cycle_progress)
-        swing_acceleration_z = self.trajectory.calculate_acceleration_z(cycle_progress)
+        swing_position_z = self.swing_traj.calculate_position_z(cycle_progress)
+        swing_velocity_z = self.swing_traj.calculate_velocity_z(cycle_progress)
+        swing_acceleration_z = self.swing_traj.calculate_acceleration_z(cycle_progress)
 
         swing_velocity_reference = np.array([0.0, 0.0, swing_velocity_z, 0.0, 0.0, 0.0])
         swing_acceleration_reference = np.array([0.0, 0.0, swing_acceleration_z, 0.0, 0.0, 0.0])
 
-        self.swing_task_reference_pose.translation += (swing_position_x, swing_position_y, swing_position_z)
+        self.swing_task_reference_pose.translation = (swing_position_x, swing_position_y, swing_position_z)
         WBID.swing_tasks[foot_in_swing].setReference(self.swing_task_reference_pose, 
                                                      swing_velocity_reference, 
                                                      swing_acceleration_reference)
@@ -290,24 +292,25 @@ class G1MujocoSimulation:
                 foot_in_swing_pos_start = WBID.model.getPose("right_foot_point_contact").translation
 
             # Maximum swing height
-            max_swing_height = 0.1
+            max_swing_height = 0.05
             
             # Create a new swing trajectory
-            self.trajectory = swing_trajectory.SwingTrajectory()
+            self.swing_traj.reset()
+  
             # Set the initial and final positions for the swing foot for x, y
-            self.trajectory.set_positions_xy(foot_in_swing_pos_start[0], 
+            self.swing_traj.set_positions_xy(foot_in_swing_pos_start[0], 
                                         foot_in_swing_pos_start[1], 
                                         self.foot_in_swing_final_position[0], 
                                         self.foot_in_swing_final_position[1])
             
             # Set the initial and final positions for the swing foot for z
             # The middle position is set to the maximum swing height
-            self.trajectory.set_positions_z(foot_in_swing_pos_start[2],
+            self.swing_traj.set_positions_z(foot_in_swing_pos_start[2],
                                         max_swing_height,
                                         foot_in_swing_pos_start[2])
             
             # Calculate the coefficients for the swing trajectory
-            self.trajectory.calculate_coeff()
+            self.swing_traj.calculate_coeff()
 
             # Debug all foot positions
             rospy.loginfo_throttle(0.1, f'Foot positions: {foot_positions_curr}')
@@ -377,6 +380,7 @@ class G1MujocoSimulation:
         # Right foot contact task is active if either right foot contact point is active
         right_foot_active = self.contact_states[2] == 1 or self.contact_states[3] == 1
 
+        # Get initial contact position once at the start
         if self.sim_time == 0.0:
             self.left_foot_contact_start = WBID.model.getPose("left_foot_point_contact")
             self.right_foot_contact_start = WBID.model.getPose("right_foot_point_contact")
@@ -463,6 +467,17 @@ class G1MujocoSimulation:
 
         # Publish the landing position in rviz
         self.rviz_srbd_full.publishLandingPosition(rospy.Time(self.sim_time), self.srbd_recieved)
+
+        position_z_trajectory = self.swing_traj.calculate_all_trajectories_z()
+        position_xy_trajectory = self.swing_traj.calculate_trajectory_xy()
+
+        # Concatinate together x y and z
+        position_trajectory = np.hstack((position_xy_trajectory, 
+                                         np.array(position_z_trajectory).T[:, 0].reshape(-1, 1)))
+        
+        # Publish the swing trajectory in rviz
+        self.rviz_srbd_full.publishSwingTrj(position_trajectory, rospy.Time(self.sim_time), "swing_trajectory")
+
 
         # Publish the simulation time
         sim_time_msg = Clock()

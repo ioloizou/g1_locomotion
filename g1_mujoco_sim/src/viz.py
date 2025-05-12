@@ -248,11 +248,11 @@ class RvizSrbdFullBody:
         marker.pose.orientation.x = marker.pose.orientation.y = marker.pose.orientation.z = 0.
         marker.pose.orientation.w = 1.
 
-        for i in range(len(points)):
+        for i in range(points.shape[0]):
             p = Point()
-            p.x = points[i].position.x
-            p.y = points[i].position.y
-            p.z = points[i].position.z
+            p.x = points[i, 0]
+            p.y = points[i, 1]
+            p.z = points[i, 2]
             marker.points.append(p)
 
         marker.color.a = 1.
@@ -261,4 +261,4 @@ class RvizSrbdFullBody:
         marker.color.g = color[1]
         marker.color.b = color[2]
 
-        pub = rospy.Publisher(name + "_trj", Marker, queue_size=10).publish(marker)
+        pub4 = rospy.Publisher(name + "_trj", Marker, queue_size=10).publish(marker)

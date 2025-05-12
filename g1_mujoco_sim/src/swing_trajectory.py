@@ -103,6 +103,16 @@ class SwingTrajectory:
         
         return position_z_trajectory, velocity_z_trajectory, acceleration_z_trajectory
     
+    def reset(self):
+        self.p_z_start = 0.0
+        self.p_z_middle = 0.0
+        self.p_z_final = 0.0
+        self.p_x_start = 0.0
+        self.p_x_final = 0.0
+        self.p_y_start = 0.0
+        self.p_y_final = 0.0
+        self.coeff = np.zeros(7)
+    
     def plot_trajectory(self):
 
         # compute trajectories
