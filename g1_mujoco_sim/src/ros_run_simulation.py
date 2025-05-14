@@ -299,15 +299,15 @@ class G1MujocoSimulation:
   
             # Set the initial and final positions for the swing foot for x, y
             self.swing_traj.set_positions_xy(foot_in_swing_pos_start[0], 
-                                        foot_in_swing_pos_start[1], 
                                         self.foot_in_swing_final_position[0], 
+                                        foot_in_swing_pos_start[1], 
                                         self.foot_in_swing_final_position[1])
             
             # Set the initial and final positions for the swing foot for z
             # The middle position is set to the maximum swing height
             self.swing_traj.set_positions_z(foot_in_swing_pos_start[2],
                                         max_swing_height,
-                                        foot_in_swing_pos_start[2])
+                                        self.foot_in_swing_final_position[2])
             
             # Calculate the coefficients for the swing trajectory
             self.swing_traj.calculate_coeff()
@@ -468,8 +468,8 @@ class G1MujocoSimulation:
         # Publish the landing position in rviz
         self.rviz_srbd_full.publishLandingPosition(rospy.Time(self.sim_time), self.srbd_recieved)
 
-        position_z_trajectory = self.swing_traj.calculate_all_trajectories_z()
         position_xy_trajectory = self.swing_traj.calculate_trajectory_xy()
+        position_z_trajectory = self.swing_traj.calculate_all_trajectories_z()
 
         # Concatinate together x y and z
         position_trajectory = np.hstack((position_xy_trajectory, 

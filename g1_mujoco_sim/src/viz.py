@@ -202,19 +202,19 @@ class RvizSrbdFullBody:
             rospy.logwarn("Empty states_horizon in srbd_msg, skipping visualization")
             return
 
-        w_T_c = TransformStamped()
+        w_T_l = TransformStamped()
         try:
-            w_T_c.transform.translation.x = srbd_msg.landing_position.x
-            w_T_c.transform.translation.y = srbd_msg.landing_position.y
-            w_T_c.transform.translation.z = srbd_msg.landing_position.z
-            w_T_c.transform.rotation.x = 0.
-            w_T_c.transform.rotation.y = 0.
-            w_T_c.transform.rotation.z = 0.
-            w_T_c.transform.rotation.w = 1.
-            w_T_c.header.frame_id = "world"
-            w_T_c.child_frame_id = "marker_landing_position"
-            w_T_c.header.stamp = t
-            self.broadcaster.sendTransformMessage(w_T_c)
+            w_T_l.transform.translation.x = srbd_msg.landing_position.x
+            w_T_l.transform.translation.y = srbd_msg.landing_position.y
+            w_T_l.transform.translation.z = srbd_msg.landing_position.z
+            w_T_l.transform.rotation.x = 0.
+            w_T_l.transform.rotation.y = 0.
+            w_T_l.transform.rotation.z = 0.
+            w_T_l.transform.rotation.w = 1.
+            w_T_l.header.frame_id = "world"
+            w_T_l.child_frame_id = "marker_landing_position"
+            w_T_l.header.stamp = t
+            self.broadcaster.sendTransformMessage(w_T_l)
         except Exception as e:
             print(e)
 
