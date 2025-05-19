@@ -145,7 +145,6 @@ class G1MujocoSimulation:
         self.is_swing_time_set = False
         self.start_swing_time = 0.0
         self.end_swing_time = 0.0
-        self.last_swing_time = 0.0
         self.swing_duration = 0.25 
 
         self.swing_traj = swing_trajectory.SwingTrajectory()
@@ -233,8 +232,8 @@ class G1MujocoSimulation:
         WBID.contact_tasks[foot_in_contact].setActive(True)
         WBID.swing_tasks[foot_in_contact].setActive(False)
         WBID.contact_tasks[foot_in_contact].reset()
-        WBID.wrench_limits[wrench_indexes_contact[0]].setWrenchLimits(np.array([0.0, 0.0, 10.0]), np.array([1000.0, 1000.0, 1000.0]))
-        WBID.wrench_limits[wrench_indexes_contact[1]].setWrenchLimits(np.array([0.0, 0.0, 10.0]), np.array([1000.0, 1000.0, 1000.0]))
+        WBID.wrench_limits[wrench_indexes_contact[0]].setWrenchLimits(np.array([-1000., -1000., 10.]), np.array([1000.0, 1000.0, 1000.0]))
+        WBID.wrench_limits[wrench_indexes_contact[1]].setWrenchLimits(np.array([-1000., -1000., 10.]), np.array([1000.0, 1000.0, 1000.0]))
 
         # Swing related                        
         WBID.contact_tasks[foot_in_swing].setActive(False)
@@ -301,7 +300,7 @@ class G1MujocoSimulation:
             self.swing_traj.set_positions_xy(foot_in_swing_pos_start[0], 
                                         self.foot_in_swing_final_position[0], 
                                         foot_in_swing_pos_start[1], 
-                                        self.foot_in_swing_final_position[1])
+                                        foot_in_swing_pos_start[1])
             
             # Set the initial and final positions for the swing foot for z
             # The middle position is set to the maximum swing height
@@ -320,7 +319,6 @@ class G1MujocoSimulation:
 
             self.start_swing_time = self.sim_time
             self.end_swing_time = self.start_swing_time + self.swing_duration
-            self.last_swing_time = self.start_swing_time
             self.is_swing_time_set = True
             rospy.loginfo(f'Starting new swing for {foot} foot')
         

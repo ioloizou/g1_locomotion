@@ -14,7 +14,7 @@ from ttictoc import tic, toc
 
 
 class WholeBodyID:
-    def __init__(self, urdf, dt, q_init, friction_coef=0.3):
+    def __init__(self, urdf, dt, q_init, friction_coef=0.8):
         self.dt = dt
         self.friction_coef = friction_coef
         self.model = xbi.ModelInterface2(urdf)
@@ -120,7 +120,7 @@ class WholeBodyID:
             self.wrench_limits.append(
                 WrenchLimits(
                     contact_frame,
-                    np.array([0., 0., 10.]),
+                    np.array([-1000., -1000., 10.]),
                     np.array([1000., 1000., 1000.]),
                     self.variables.getVariable(contact_frame))
             )
@@ -159,6 +159,11 @@ class WholeBodyID:
 
         min_force_weight = 1e-5
         # For the self.base task taking only the orientation part
+        
+        #for joint_name in self.model.getJointNames():
+        #    print(f"{joint_name} : {self.model.getJointId(joint_name)}")
+        #exit()
+
         self.stack = 3.5*self.com + 0.4*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28])+ 0.005*req_qddot 
         self.stack += 0.5*angular_momentum
         # self.stack += min_force_weight*req_forces_0 + min_force_weight*req_forces_1 + min_force_weight*req_forces_2 + min_force_weight*req_forces_3
@@ -194,29 +199,26 @@ class WholeBodyID:
             self.qmax,
             self.qmin,
             10.0 * self.dqmax,
-            self.dt,
-        )
+            self.dt)
         self.stack = self.stack << VelocityLimits(
-            self.model, self.variables.getVariable("qddot"), self.dqmax, self.dt
-        )
+            self.model, self.variables.getVariable("qddot"), self.dqmax, self.dt)
 
         self.stack = self.stack << TorqueLimits(
              self.model,
              self.variables.getVariable("qddot"),
              force_variables,
              self.contact_frames,
-             self.torque_limits,
-        )
+             self.torque_limits)
           
         for i in range(len(self.contact_frames)):
-            T = self.model.getPose(self.contact_frames[i])
-            mu = (T.linear, self.friction_coef)  # rotation is world to contact
+            R = np.eye(3)
+            mu = (R, self.friction_coef)  # rotation is world to contact
             self.stack = self.stack << FrictionCone(
                 self.contact_frames[i],
                 self.variables.getVariable(self.contact_frames[i]),
                 self.model,
-                mu,
-            ) << self.wrench_limits[i]
+                mu) << self.wrench_limits[i]
+            
 
         # Creates the solver
         self.solver = pysot.iHQP(self.stack) #, solver_back_ends.eiQuadProg)
@@ -293,6 +295,7 @@ class WholeBodyID:
 
             for i in range(len(self.contact_frames)):
                 self.wrench_tasks[i].setReference(u_opt0[i*3:i*3+3])
+
 
     def solveQP(self):
         self.x = self.solver.solve()
