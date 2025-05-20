@@ -300,7 +300,7 @@ class G1MujocoSimulation:
             self.swing_traj.set_positions_xy(foot_in_swing_pos_start[0], 
                                         self.foot_in_swing_final_position[0], 
                                         foot_in_swing_pos_start[1], 
-                                        foot_in_swing_pos_start[1])
+                                        foot_in_swing_pos_start[1]) # This is a hacky way to set the y position until raibert for y is fixed
             
             # Set the initial and final positions for the swing foot for z
             # The middle position is set to the maximum swing height
@@ -322,12 +322,13 @@ class G1MujocoSimulation:
             self.is_swing_time_set = True
             rospy.loginfo(f'Starting new swing for {foot} foot')
         
+        self.calculate_swing_foot(foot, foot_in_swing)
+        
         # Check if the current swing is complete
         if self.is_swing_time_set and self.sim_time >= self.end_swing_time:
             # Reset the swing time
             self.is_swing_time_set = False
 
-        self.calculate_swing_foot(foot, foot_in_swing)
 
         # Publish the reference foot position
         publish_feet_reference(pub_reference_feet_position,

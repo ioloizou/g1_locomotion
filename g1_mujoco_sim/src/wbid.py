@@ -260,9 +260,9 @@ class WholeBodyID:
             
             # Since i use in MPC the torso inertia, 
             self.inertia_torso = np.array([
-                [6.20564e-2, 0., 0.],
-                [0., 5.05015e-2, 0.],
-                [0., 0., 0.032353e-2]
+                [8.20564e-2, 0., 0.],
+                [0., 8.05015e-2, 0.],
+                [0., 0., 0.32353e-2]
             ])
 
             # If i turn i need to rotate it based on yaw
@@ -277,7 +277,7 @@ class WholeBodyID:
             # The linear is just to satisfy opensot since is omitted in the stack
             linear_acceleration_reference = np.zeros((3,1))
             angular_acceleration_reference = inertia_torso_inv @ sum_r_cross_omega.T
-            angular_acceleration_reference = np.zeros((3,1))
+            # angular_acceleration_reference = np.zeros((3,1))
 
             acceleration_reference = np.vstack((linear_acceleration_reference, angular_acceleration_reference)) 
             # Pass the updated homogeneous transformation.

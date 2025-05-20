@@ -47,7 +47,7 @@ class SwingTrajectory:
 
         # Constants
         # Added a bit of downward final velocity on z to make foot landing more vertical and has a bit of impact with the ground
-        b = np.array([self.p_z_start, 0., 0., self.p_z_middle, self.p_z_final, -0.2, 0.])
+        b = np.array([self.p_z_start, 0., 0., self.p_z_middle, self.p_z_final, -0.02, 0.])
 
         self.coeff = np.linalg.solve(A, b)
     
@@ -55,7 +55,7 @@ class SwingTrajectory:
         # Calculate x and y position with a sin based speed up which
         # allows to cover some % of the distance in the first half of the cycle
 
-        percent_in_first_half = 0.85
+        percent_in_first_half = 0.80
         if cycle_progress <= 0.5:
             phase = percent_in_first_half * np.sin(np.pi * cycle_progress)
         else:
@@ -152,13 +152,14 @@ class SwingTrajectory:
         plt.tight_layout()
         plt.show()
 
-trajectory = SwingTrajectory()
-trajectory.set_positions_xy(0.0, 0.1, 0.0, 0.1)  # Start and end positions in x and y
-trajectory.set_positions_z(0.0, 0.1, 0.0)  # Start, middle, and end positions in z
-trajectory.calculate_coeff() # Calculate coefficients for z trajectory
-position_z_at_t0 = trajectory.calculate_position_z(0.5)
-print(position_z_at_t0)
-position_x_at_t0, position_y_at_t0 = trajectory.calculate_position_xy(0.5)
-print(position_x_at_t0, position_y_at_t0)
+# trajectory = SwingTrajectory()
+# trajectory.set_positions_xy(0.0, 0.1, 0.0, 0.1)  # Start and end positions in x and y
+# trajectory.set_positions_z(0.0, 0.1, 0.0)  # Start, middle, and end positions in z
+# trajectory.calculate_coeff() # Calculate coefficients for z trajectory
+# position_z_at_t0 = trajectory.calculate_position_z(0.5)
+# print(position_z_at_t0)
+# position_x_at_t0, position_y_at_t0 = trajectory.calculate_position_xy(0.5)
+# print(position_x_at_t0, position_y_at_t0)
+# trajectory.plot_trajectory()
 
 
