@@ -300,7 +300,7 @@ class G1MujocoSimulation:
             self.swing_traj.set_positions_xy(foot_in_swing_pos_start[0], 
                                         self.foot_in_swing_final_position[0], 
                                         foot_in_swing_pos_start[1], 
-                                        foot_in_swing_pos_start[1]) # This is a hacky way to set the y position until raibert for y is fixed
+                                        self.foot_in_swing_final_position[1])
             
             # Set the initial and final positions for the swing foot for z
             # The middle position is set to the maximum swing height

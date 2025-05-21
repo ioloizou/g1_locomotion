@@ -52,7 +52,7 @@ class WholeBodyID:
 
         # Set CoM tracking task
         self.com = CoM(self.model, self.variables.getVariable("qddot"))
-        com_gain = 4.
+        com_gain = 3.
         com_Kp = np.eye(3) * 100. * com_gain
         self.com.setKp(com_Kp)
         com_Kd = np.diag([30., 30., 50.]) * com_gain
@@ -67,7 +67,7 @@ class WholeBodyID:
         self.base = Cartesian(
             "base", self.model, "world", "pelvis", self.variables.getVariable("qddot")
         )
-        base_gain = 12.
+        base_gain = 5.
         base_Kp = np.diag([1., 1., 1., 10., 10., 20.]) * base_gain
         self.base.setKp(base_Kp)
         base_Kd = np.diag([1., 1., 1., 50., 50., 50.]) * base_gain
@@ -108,7 +108,7 @@ class WholeBodyID:
                 )
             )
             self.swing_tasks[-1].setLambda(1., 1.)
-            swing_gain = 4.
+            swing_gain = 3.
             swing_Kp = np.diag([550., 750., 560., 70., 70., 70.]) * swing_gain
             swing_Kd = np.diag([10., 10., 17., 7., 7., 7.]) * swing_gain
             self.swing_tasks[-1].setKp(swing_Kp)
@@ -164,12 +164,12 @@ class WholeBodyID:
         #    print(f"{joint_name} : {self.model.getJointId(joint_name)}")
         #exit()
 
-        self.stack = 3.5*self.com + 0.4*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28])+ 0.005*req_qddot 
-        self.stack += 0.5*angular_momentum
+        self.stack = 3.*self.com + 0.4*(posture%[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28])+ 0.005*req_qddot 
+        # self.stack += 0.3*angular_momentum
         # self.stack += min_force_weight*req_forces_0 + min_force_weight*req_forces_1 + min_force_weight*req_forces_2 + min_force_weight*req_forces_3
         self.stack += 1e-8 * MinimizeVariable("min_torques", torques)
         # 
-        self.stack += 3.5*(self.base%[3, 4 ,5])
+        self.stack += 3.*(self.base%[3, 4 ,5])
         
         for i in range(len(self.cartesian_contact_task_frames)):
             self.contact_tasks[i].setLambda(300.0, 20.)
