@@ -434,7 +434,8 @@ class G1MujocoSimulation:
         # World Frame
         base_angular_velocity_curr = WBID.model.getVelocityTwist("pelvis")[3:6]
         # World Frame
-        com_linear_velocity_curr = WBID.model.getCOMJacobian() @ joints_velocity_local
+        # com_linear_velocity_curr = WBID.model.getCOMJacobian() @ joints_velocity_local
+        com_linear_velocity_curr = WBID.model.getCOMVelocity()
 
         # Get the forces from QP to publish
         publish_current_state(pub_srbd,
