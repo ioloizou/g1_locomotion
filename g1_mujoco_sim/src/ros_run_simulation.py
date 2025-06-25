@@ -393,6 +393,15 @@ class G1MujocoSimulation:
             rospy.loginfo("Double support phase")
             WBID.swing_tasks[0].setActive(False)
             WBID.swing_tasks[1].setActive(False)
+            WBID.contact_tasks[0].setActive(True)
+            WBID.contact_tasks[1].setActive(True)
+            WBID.contact_tasks[0].reset()
+            WBID.contact_tasks[1].reset()
+            WBID.wrench_limits[0].setWrenchLimits(np.array([-1000., -1000., 10.]), np.array([1000.0, 1000.0, 1000.0]))
+            WBID.wrench_limits[1].setWrenchLimits(np.array([-1000., -1000., 10.]), np.array([1000.0, 1000.0, 1000.0]))
+            WBID.wrench_limits[2].setWrenchLimits(np.array([-1000., -1000., 10.]), np.array([1000.0, 1000.0, 1000.0]))
+            WBID.wrench_limits[3].setWrenchLimits(np.array([-1000., -1000., 10.]), np.array([1000.0, 1000.0, 1000.0]))
+        
         elif left_foot_active:
             self.feet_gait_procedure("left", foot_positions_curr, pub_reference_feet_position, feet_ref_pos_msg)
         elif right_foot_active:
