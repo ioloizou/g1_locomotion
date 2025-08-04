@@ -16,6 +16,87 @@ from g1_msgs.msg import SRBD_state, ContactPoint, Feet_reference, State
 from config import q_init
 from wbid import WholeBodyID
 import viz
+import matplotlib.pyplot as plt
+
+def plot_torques(self, xbot_model):
+    """
+    Plot the torques over time.
+    """
+    
+    # Plot a torque limit with a dashed black line 50 Nm for ankles, 88 Nm for hips and 139 for knees and their respective negatives
+    # Convert history to array for easy indexing
+    torques = np.array(self.joint_torque_history)  # shape (T, n_joints)
+    joint_names = xbot_model.getJointNames()
+    rospy.loginfo_once(f"Number of joint names: {len(joint_names)}")
+
+    plt.figure(1)
+
+    # Plot joint torques, one line per joint with its name
+    for idx, name in enumerate(joint_names[1:]):
+        plt.plot(self.sim_time_history, torques[:, idx], label=name)
+
+    # # Overlay torque limits
+    plt.axhline(50,  color='g', linestyle='--', label='Ankle Torque Limit', alpha=0.5)
+    plt.axhline(-50, color='g', linestyle='--', alpha=0.5)
+    plt.axhline(88,  color='k', linestyle='--', label='Hip Torque Limit', alpha=0.5)
+    plt.axhline(-88, color='k', linestyle='--', alpha=0.5)
+    plt.axhline(139, color='r', linestyle='--', label='Knee Torque Limit', alpha=0.5)
+    plt.axhline(-139,color='r', linestyle='--', alpha=0.5)
+
+    plt.xlabel('Simulation Time (s)')
+    plt.ylabel('Torques (Nm)')
+    plt.title('Torques over Simulation Time')
+    plt.legend()
+
+def plot_com(self):
+    com_xy = np.array(self.com_position_history)
+    com_ref_xy = np.array(self.com_position_reference_history)
+    plt.figure(2)
+    plt.plot(com_xy[:, 0], com_xy[:, 1], color='magenta', label='CoM Trajectory')
+    plt.plot(com_ref_xy[:, 0], com_ref_xy[:, 1], color='blue', linestyle='--', label='CoM Reference')
+    # Scatter footstep history: convert list of arrays to a 2D array
+    foot_hist = np.array(self.footstep_history)  # shape (N, 3)
+    print(foot_hist)
+    import matplotlib.patches as patches
+
+    # after you have foot_hist = np.array(...)
+    ax = plt.gca()
+    foot_length = 0.045
+    foot_width  = 0.06
+
+    for x, y, _ in foot_hist:
+        # center the rectangle on (x,y)
+        rect = patches.Rectangle(
+            (x - foot_length/2, y - foot_width/2),
+            foot_length,
+            foot_width,
+            edgecolor='black',
+            facecolor='brown',
+            alpha=0.6
+        )
+        ax.add_patch(rect)
+    plt.axhline(0, xmin= com_xy[0, 0], xmax=com_xy[-1:, 0], color='k', linestyle='-.', label='Command Reference', alpha=0.5)
+    # plt.xlim(left=com_xy[0, 0])
+    plt.ylim(-0.4, 0.4)
+    plt.xlabel('X Position (m)')
+    plt.ylabel('Y Position (m)')
+    plt.title('CoM Trajectory in XY Plane')
+    plt.legend()
+
+    com_vel_x = np.array(self.com_velocity_history)[:, 0]
+    com_ref_vel_x = np.array(self.com_velocity_reference_history)[:, 0]
+    plt.figure(3)
+    plt.plot(self.sim_time_history, com_vel_x, color='orange', label='CoM Velocity X')
+    plt.plot(self.sim_time_history, com_ref_vel_x, color='blue', linestyle = '--', label='CoM Reference Velocity X')  
+    plt.xlabel('Simulation Time (s)')
+    plt.ylabel('CoM Velocity X (m/s)')
+    plt.title('CoM Velocity X over Simulation Time')
+    plt.legend()
+
+def plot_all(self, xbot_model):
+    plot_torques(self, xbot_model)
+    plot_com(self)
+    plt.show()
 
 
 def publish_current_state(pub_srbd, 
@@ -182,6 +263,15 @@ class G1MujocoSimulation:
         # Add simulation time publisher
         self.pub_sim_time = rospy.Publisher("/simulation_time", Clock, queue_size=10)
 
+        # Initialize history tracking for joint torques and simulation time
+        self.joint_torque_history = []
+        self.com_position_history = []
+        self.com_position_reference_history = []
+        self.com_velocity_history = []
+        self.com_velocity_reference_history = []
+        self.sim_time_history = []
+        self.footstep_history = []
+
         # Running flag
         self.running = True
 
@@ -261,7 +351,7 @@ class G1MujocoSimulation:
                                                      swing_velocity_reference, 
                                                      swing_acceleration_reference)
         
-        rospy.loginfo(f'{foot} in contact, other foot swinging up, progress: {cycle_progress:.2f}')
+        # rospy.loginfo(f'{foot} in contact, other foot swinging up, progress: {cycle_progress:.2f}')
 
            
 
@@ -273,12 +363,13 @@ class G1MujocoSimulation:
             foot_in_swing, foot_in_contact = (0, 1)
             wrench_indexes_swing = [0, 1]
             wrench_indexes_contact = [2, 3]
-            self.swing_task_reference_pose = self.left_foot_contact_start               
+            self.swing_task_reference_pose = self.left_foot_contact_start    
         else:
             foot_in_swing, foot_in_contact = (1, 0)
             wrench_indexes_swing = [2, 3]
             wrench_indexes_contact = [0, 1]
             self.swing_task_reference_pose = self.right_foot_contact_start 
+
         
         # Only set new swing times if we're not already in a swing or if we're switching feet
         if not self.is_swing_time_set:
@@ -286,8 +377,10 @@ class G1MujocoSimulation:
 
             if foot == "right":
                 # Since the foot in contact is the other foot, we need to set the reference pose for the swing foot
+                self.footstep_history.append([self.foot_in_swing_final_position[0], self.foot_in_swing_final_position[1], self.foot_in_swing_final_position[2]])
                 foot_in_swing_pos_start = WBID.model.getPose("left_foot_point_contact").translation
             else:
+                self.footstep_history.append([self.foot_in_swing_final_position[0], self.foot_in_swing_final_position[1], self.foot_in_swing_final_position[2]])
                 foot_in_swing_pos_start = WBID.model.getPose("right_foot_point_contact").translation
 
             # Maximum swing height
@@ -312,10 +405,10 @@ class G1MujocoSimulation:
             self.swing_traj.calculate_coeff()
 
             # Debug all foot positions
-            rospy.loginfo_throttle(0.1, f'Foot positions: {foot_positions_curr}')
-            rospy.loginfo_throttle(0.1, f'Foot in swing start position: {foot_in_swing_pos_start}')
-            rospy.loginfo_throttle(0.1, f'Foot in swing final position: {self.foot_in_swing_final_position}')
-            rospy.loginfo_throttle(0.1, f'Foot in swing max height: {max_swing_height}')
+            # rospy.loginfo_throttle(0.1, f'Foot positions: {foot_positions_curr}')
+            # rospy.loginfo_throttle(0.1, f'Foot in swing start position: {foot_in_swing_pos_start}')
+            # rospy.loginfo_throttle(0.1, f'Foot in swing final position: {self.foot_in_swing_final_position}')
+            # rospy.loginfo_throttle(0.1, f'Foot in swing max height: {max_swing_height}')
 
             self.start_swing_time = self.sim_time
             self.end_swing_time = self.start_swing_time + self.swing_duration
@@ -383,6 +476,10 @@ class G1MujocoSimulation:
         if self.sim_time == 0.0:
             self.left_foot_contact_start = WBID.model.getPose("left_foot_point_contact")
             self.right_foot_contact_start = WBID.model.getPose("right_foot_point_contact")
+            self.footstep_history.append(WBID.model.getPose("left_foot_point_contact").translation.copy())
+            self.footstep_history.append(WBID.model.getPose("right_foot_point_contact").translation.copy())
+
+            
 
         # rospy.loginfo(f'Left foot contact_start: {self.left_foot_contact_start}')
         # rospy.loginfo(f'Right foot contact_start: {self.right_foot_contact_start}')
@@ -390,7 +487,9 @@ class G1MujocoSimulation:
 
 
         if left_foot_active and right_foot_active:
-            rospy.loginfo("Double support phase")
+            # Log "Double support phase" at 10 Hz using ROS logging
+            rospy.loginfo_throttle(0.1, "Double support phase")
+            self.last_double_support_log_time = self.sim_time
             WBID.swing_tasks[0].setActive(False)
             WBID.swing_tasks[1].setActive(False)
             WBID.contact_tasks[0].setActive(True)
@@ -409,7 +508,7 @@ class G1MujocoSimulation:
 
         # Log less frequently to avoid spamming the console
         if self.sim_time - getattr(self, 'last_log_time', 0.0) >= 0.5:
-            rospy.loginfo(f'Current swing foot: {self.current_swing_foot}, Swing time set: {self.is_swing_time_set}')
+            rospy.loginfo_throttle(0.1, f'Current swing foot: {self.current_swing_foot}, Swing time set: {self.is_swing_time_set}')
             self.last_log_time = self.sim_time
         
         ###################################
@@ -422,6 +521,17 @@ class G1MujocoSimulation:
         tau = WBID.getInverseDynamics()
         self.wbid_solve_time = toc()
 
+        # Store joint torques and simulation time
+        self.joint_torque_history.append(tau.copy())
+        self.com_position_history.append(WBID.model.getCOM().copy())
+        self.com_velocity_history.append(WBID.model.getCOMVelocity().copy())
+
+        com_ref = WBID.com.getReference()
+        self.com_position_reference_history.append(com_ref[0].copy())
+        self.com_velocity_reference_history.append(com_ref[1].copy())
+
+        self.sim_time_history.append(self.sim_time)
+        
         # Exclude floating base
         self.data.ctrl = tau[6:]
 
@@ -521,9 +631,15 @@ class G1MujocoSimulation:
 
         while self.running and not rospy.is_shutdown() and self.viewer.is_alive:
             # Get real time elapsed since last step
+            rospy.loginfo(f"Simulation time: {self.sim_time:.2f} seconds")
+            if sim.sim_time > 2.5:
+                rospy.loginfo_throttle(0.1, f"Simulation time: {sim.sim_time:.2f} seconds")
+                plot_all(self, WBID.model)
+                rospy.signal_shutdown("Simulation closed.")    
+
             self.sim_step(pub_srbd, pub_reference_feet_position, feet_ref_pos_msg, contact_point_msg)
             self.sim_time += self.sim_timestep
-
+            
             # Render the current state
             self.viewer.render()
 
@@ -545,7 +661,6 @@ if __name__ == "__main__":
         WBID.setupProblem()
         # Run the simulation     
         sim.run()
-    
     except rospy.ROSInterruptException:
         pass
     except KeyboardInterrupt:
