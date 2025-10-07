@@ -32,6 +32,8 @@ The proposed framework combines **Single Rigid Body Dynamics (SRBD)** with **Who
         - [Build the ROS Packages](#build-the-ros-packages)
   3. [Usage](#usage)
      - [Running an Experiment](#running-an-experiment)
+     - [Running Plotjuggler](#running-plotjuggler)
+
   5. [Maintainer](#maintainer)
   6. [License](#license)
 
@@ -114,7 +116,13 @@ roslaunch g1_mujoco_sim mpc_wbid_simulation.launch
 
 The simulation will execute a few walking steps and then stop.
 
----
+### Running Plotjuggler
+
+On a different terminal in Docker:
+```bash
+rosrun plotjuggler plotjuggler
+```
+and then can load the MPC_QP_layout found in  **`g1_mujoco_sim/config/`** to have a dashboard of important values
 
 ## Maintainer
 
