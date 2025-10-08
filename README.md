@@ -1,10 +1,10 @@
 # Humanoid Bipedal Locomotion Stack through Linear Model Predictive Control
 
-This repository contains the work conducted for my **Master’s Thesis** in *Robotics Engineering* at **Centrale Nantes**, and during my research visit at **HuCeBot, INRIA Nancy**, under the supervision of **Dr. Enrico Mingo Hoffman**. The thesis manuscript can be found (here, link)
+This repository contains the work conducted for my **Master’s Thesis** in *Robotics Engineering* at **Centrale Nantes**, and during my research visit at **HuCeBot, INRIA Nancy**, under the supervision of **Dr. Enrico Mingo Hoffman**. The thesis manuscript can be found [here](https://hal.univ-lorraine.fr/hal-05297772).
+
 
 The objective of this project is to demonstrate a **linear locomotion control strategy** for the **Unitree G1 humanoid robot**.  
 The proposed framework combines **Single Rigid Body Dynamics (SRBD)** with **Whole-Body Inverse Dynamics (WBID)** in a **cascaded control architecture**, permitting a fully **linear control pipeline**.
-
 
 > ⚠️ *Note:* This implementation has not yet been tested on the physical robot.
 
@@ -144,8 +144,9 @@ See the [LICENSE](LICENSE) file for more information.
 
 ## Reference
 
-> *"Humanoid Bipedal through Linear Model Predictive Control"*,  
-> Centrale Nantes, 2025.
+> Ioannis Loizou. Humanoid Bipedal Locomotion through Linear Model Predictive Control. Robotics
+>  [cs.RO]. 2025. ⟨hal-05297772⟩
+
 
 If you use this work in your research, please cite or acknowledge this repository.
 
