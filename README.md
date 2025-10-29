@@ -63,7 +63,6 @@ git checkout g1-locomotion
 #### Build Using Docker
 
 ```bash
-cd docker
 sh build.sh
 ```
 
@@ -73,7 +72,7 @@ sh build.sh
 #### Run the Docker Container
 
 ```bash
-sh run.sh
+sh run_docker.sh
 ```
 
 #### Build the ROS Packages
@@ -91,10 +90,10 @@ git checkout walking-demo
 cd g1_mpc && git checkout walking-demo
 ```
 
-Then build everything:
+Then build everything, by using the make file in **'/g1_locomotion'**:
 
 ```bash
-cd ../ && make all
+cd .. && make all
 ```
 
 Finally, source the setup file:
