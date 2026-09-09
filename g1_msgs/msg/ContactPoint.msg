@@ -1,13 +1,15 @@
-# This message contains information about a single contact point
+# One contact point of the single-rigid-body model.
+#
+# The four points are always ordered L-heel, L-toe, R-heel, R-toe.
 
-# Name of the contact point
+# Frame name of the contact point
 string name
 
-# Position of the contact point [m]
+# Position, world frame [m]
 geometry_msgs/Vector3 position
 
-# Force applied at the contact point [N]
+# Ground reaction force, world frame [N]
 geometry_msgs/Vector3 force
 
-# Contact state (true if the contact is active)
+# True when this point is scheduled to carry load
 bool active

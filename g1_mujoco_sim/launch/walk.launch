@@ -1,0 +1,22 @@
+<launch>
+  <!-- Launch the stack and immediately send a walking command.
+       Override with, for example:
+         roslaunch g1_mujoco_sim walk.launch vx:=0.3 wz:=0.4 -->
+
+  <arg name="vx" default="0.3"/>
+  <arg name="vy" default="0.0"/>
+  <arg name="wz" default="0.0"/>
+  <arg name="headless" default="false"/>
+  <arg name="duration" default="0.0"/>
+  <arg name="rviz" default="true"/>
+
+  <include file="$(find g1_mujoco_sim)/launch/g1_locomotion.launch">
+    <arg name="headless" value="$(arg headless)"/>
+    <arg name="duration" value="$(arg duration)"/>
+    <arg name="rviz" value="$(arg rviz)"/>
+  </include>
+
+  <param name="command/default_linear_x" value="$(arg vx)"/>
+  <param name="command/default_linear_y" value="$(arg vy)"/>
+  <param name="command/default_angular_z" value="$(arg wz)"/>
+</launch>

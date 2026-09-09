@@ -574,7 +574,7 @@ Visualization Manager:
       Value: true
     - Class: rviz/Marker
       Enabled: true
-      Marker Topic: /CoM_trj
+      Marker Topic: /com_trajectory
       Name: ComHorizon
       Namespaces:
         SRBD: true
@@ -588,9 +588,9 @@ Visualization Manager:
         SRBD: true
       Queue Size: 100
       Value: true
-    - Class: rviz/Marker
+    - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /Landing_position
+      Marker Topic: /footstep_targets
       Name: Marker
       Namespaces:
         SRBD: true
@@ -598,7 +598,7 @@ Visualization Manager:
       Value: true
     - Class: rviz/Marker
       Enabled: true
-      Marker Topic: /swing_trajectory_trj
+      Marker Topic: /swing_trajectory
       Name: SwingTrajectory
       Namespaces:
         {}

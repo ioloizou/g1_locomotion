@@ -1,23 +1,29 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>g1_mujoco_sim</name>
-  <version>0.0.1</version>
-  <description>MuJoCo simulation package for G1 humanoid robot</description>
+  <version>0.2.0</version>
+  <description>
+    MuJoCo simulation and whole-body inverse dynamics for the G1 locomotion
+    stack.
+  </description>
 
   <maintainer email="yiannisloizu@gmail.com">Ioannis Loizou</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>catkin</buildtool_depend>
   <depend>rospy</depend>
-  <depend>roslaunch</depend>
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>rosgraph_msgs</depend>
+  <depend>visualization_msgs</depend>
   <depend>tf</depend>
-  <depend>tf2_ros</depend>
-  <depend>pal_statistics</depend>
+  <depend>g1_msgs</depend>
+  <depend>g1_description</depend>
+  <build_depend>roslaunch</build_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>rviz</exec_depend>
 
-  
   <export>
   </export>
 </package>

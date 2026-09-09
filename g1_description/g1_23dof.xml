@@ -1,6 +1,25 @@
 <mujoco model="g1_23dof">
   <compiler angle="radian" meshdir="meshes"/>
 
+  <!-- Physics options are stated explicitly so the plant matches what the
+       controllers assume. Gravity in particular must equal physics/gravity in
+       config/g1_locomotion.yaml. -->
+  <option timestep="0.001" gravity="0 0 -9.80665" integrator="implicitfast"
+          cone="pyramidal" impratio="10"/>
+
+  <default>
+    <!-- Foot contact spheres: the only collidable geometry on the feet.
+         Friction must equal physics/friction_coefficient in
+         config/g1_locomotion.yaml, otherwise the friction cones the
+         controllers respect are not the ones the ground actually enforces.
+         priority=1 makes these values win over the floor's. -->
+    <default class="foot_contact">
+      <geom size="0.005" solref="0.01 1" solimp="0.95 0.99 0.001"
+            friction="0.8 0.02 0.001" priority="1" condim="3"
+            rgba="0.2 0.2 0.2 1"/>
+    </default>
+  </default>
+
   <asset>
     <mesh name="pelvis" file="pelvis.STL"/>
     <mesh name="pelvis_contour_link" file="pelvis_contour_link.STL"/>
@@ -69,10 +88,10 @@
                   <inertial pos="0.026505 0 -0.016425" quat="-0.000481092 0.728482 -0.000618967 0.685065" mass="0.608" diaginertia="0.00167218 0.0016161 0.000217621"/>
                   <joint name="left_ankle_roll_joint" pos="0 0 0" axis="1 0 0" range="-0.2618 0.2618" actuatorfrcrange="-50 50"/>
                   <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.2 0.2 0.2 1" mesh="left_ankle_roll_link"/>
-                  <geom size="0.005" pos="-0.05 0.025 -0.03" rgba="0.2 0.2 0.2 1"/>
-                  <geom size="0.005" pos="-0.05 -0.025 -0.03" rgba="0.2 0.2 0.2 1"/>
-                  <geom size="0.005" pos="0.12 0.03 -0.03" rgba="0.2 0.2 0.2 1"/>
-                  <geom size="0.005" pos="0.12 -0.03 -0.03" rgba="0.2 0.2 0.2 1"/>
+                  <geom class="foot_contact" pos="-0.05 0.025 -0.03"/>
+                  <geom class="foot_contact" pos="-0.05 -0.025 -0.03"/>
+                  <geom class="foot_contact" pos="0.12 0.03 -0.03"/>
+                  <geom class="foot_contact" pos="0.12 -0.03 -0.03"/>
                   
                   <!-- Plane contact sites (four corners) -->
                   <site name="left_foot_upper_left" pos="0.12 0.03 -0.03" size="0.01" rgba="0 1 0 0.5"/>
@@ -121,10 +140,10 @@
                   <inertial pos="0.026505 0 -0.016425" quat="0.000481092 0.728482 0.000618967 0.685065" mass="0.608" diaginertia="0.00167218 0.0016161 0.000217621"/>
                   <joint name="right_ankle_roll_joint" pos="0 0 0" axis="1 0 0" range="-0.2618 0.2618" actuatorfrcrange="-50 50"/>
                   <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.2 0.2 0.2 1" mesh="right_ankle_roll_link"/>
-                  <geom size="0.005" pos="-0.05 0.025 -0.03" rgba="0.2 0.2 0.2 1"/>
-                  <geom size="0.005" pos="-0.05 -0.025 -0.03" rgba="0.2 0.2 0.2 1"/>
-                  <geom size="0.005" pos="0.12 0.03 -0.03" rgba="0.2 0.2 0.2 1"/>
-                  <geom size="0.005" pos="0.12 -0.03 -0.03" rgba="0.2 0.2 0.2 1"/>
+                  <geom class="foot_contact" pos="-0.05 0.025 -0.03"/>
+                  <geom class="foot_contact" pos="-0.05 -0.025 -0.03"/>
+                  <geom class="foot_contact" pos="0.12 0.03 -0.03"/>
+                  <geom class="foot_contact" pos="0.12 -0.03 -0.03"/>
                   
                   <!-- Plane contact sites (four corners) -->
                   <site name="right_foot_upper_left" pos="0.12 0.03 -0.03" size="0.01" rgba="0 1 0 0.5"/>
@@ -267,6 +286,7 @@
   </asset>
   <worldbody>
     <light pos="1 0 3.5" dir="0 0 -1" directional="true"/>
-    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
+    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"
+          friction="0.8 0.02 0.001" solref="0.01 1" solimp="0.95 0.99 0.001"/>
   </worldbody>
 </mujoco>

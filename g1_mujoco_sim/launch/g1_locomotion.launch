@@ -1,0 +1,35 @@
+<launch>
+  <!-- Whole locomotion stack: MuJoCo simulation, whole-body inverse dynamics,
+       convex MPC, and RViz. -->
+
+  <arg name="headless" default="false"
+       doc="run the simulation without the MuJoCo viewer"/>
+  <arg name="duration" default="0.0"
+       doc="stop after this many seconds of simulated time, 0 for no limit"/>
+  <arg name="rviz" default="true"/>
+  <arg name="config" default="$(find g1_mujoco_sim)/config/g1_locomotion.yaml"/>
+
+  <!-- One source of truth for both nodes: friction, gravity, gait timing and
+       foot geometry all come from here, so the plan and the plant agree. -->
+  <rosparam command="load" file="$(arg config)"/>
+
+  <node name="g1_mujoco_sim" pkg="g1_mujoco_sim" type="g1_simulation_node.py"
+        output="screen" required="true">
+    <param name="headless" value="$(arg headless)"/>
+    <param name="duration" value="$(arg duration)"/>
+  </node>
+
+  <node name="g1_mpc" pkg="g1_mpc" type="mpc_node"
+        output="screen" required="true"/>
+
+  <param name="robot_description"
+         textfile="$(find g1_description)/g1_23dof.urdf"/>
+
+  <node name="robot_state_publisher" pkg="robot_state_publisher"
+        type="robot_state_publisher" output="screen">
+    <param name="publish_frequency" type="double" value="50.0"/>
+  </node>
+
+  <node if="$(arg rviz)" name="rviz" pkg="rviz" type="rviz"
+        args="-d $(find g1_mujoco_sim)/config/g1_srbd_full.rviz"/>
+</launch>

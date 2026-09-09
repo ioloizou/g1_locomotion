@@ -1,84 +1,60 @@
 SHELL := /bin/bash
 
-# Define workspace directories
-WS_DIR := /home/forest_ws
-SRC_DIR := $(WS_DIR)/src
-LOCO_DIR := $(SRC_DIR)/g1_locomotion
-BUILD_DIR := $(WS_DIR)/build
+WS_DIR      := /home/forest_ws
+LOCO_DIR    := $(WS_DIR)/src/g1_locomotion
+BUILD_DIR   := $(WS_DIR)/build
 INSTALL_DIR := $(WS_DIR)/install
 
-# Get all valid ROS packages inside g1_locomotion (only directories with package.xml)
-LOCO_PACKAGES := $(shell find $(LOCO_DIR) -maxdepth 1 -mindepth 1 -type d -exec test -f {}/package.xml \; -print | xargs -I{} basename {})
+# Build order matters: the message package generates headers the others include,
+# and g1_mujoco_sim's launch check needs g1_mpc's node to exist.
+PACKAGES := g1_description g1_msgs g1_mpc g1_mujoco_sim
 
-# Default target: Build all g1_locomotion packages
-.PHONY: all
+SETUP := source /opt/ros/noetic/setup.bash && source $(WS_DIR)/setup.bash
+
+.PHONY: all build clean rebuild test check-config help $(PACKAGES)
+
 all: build
 
-# Build all g1_locomotion packages using separate Make targets for each package,
-# which enables proper dependency tracking and parallel builds.
-.PHONY: build $(LOCO_PACKAGES)
-build: $(LOCO_PACKAGES)
-$(LOCO_PACKAGES):
-	@echo "Building package $@"
+build: $(PACKAGES)
+
+# Serialised on purpose; each package is still built with a parallel make.
+$(PACKAGES):
+	@echo "==> $@"
 	@mkdir -p "$(BUILD_DIR)/$@"
-	@cd "$(BUILD_DIR)/$@" && \
-		source /opt/ros/noetic/setup.bash && \
-		source $(WS_DIR)/setup.bash && \
+	@cd "$(BUILD_DIR)/$@" && $(SETUP) && \
 		cmake -DCMAKE_INSTALL_PREFIX="$(INSTALL_DIR)" \
-			  -DCMAKE_BUILD_TYPE=Release \
-			  "$(LOCO_DIR)/$@" && \
-		$(MAKE) -j$(nproc) && $(MAKE) install
+		      -DCMAKE_BUILD_TYPE=Release \
+		      "$(LOCO_DIR)/$@" > /dev/null && \
+		$(MAKE) -j$$(nproc) install > /dev/null
+	@echo "    ok"
 
-# Build a specific package inside g1_locomotion
-.PHONY: pkg
-pkg:
-ifndef PKG
-	$(error PKG is not set. Please use: make pkg PKG=<package_name>)
-endif
-	@echo "Building package $(PKG) step-by-step:"
-	@mkdir -p "$(BUILD_DIR)/$(PKG)"
-	@cd "$(BUILD_DIR)/$(PKG)" && \
-		source /opt/ros/noetic/setup.bash && \
-		source $(WS_DIR)/setup.bash && \
-		cmake -DCMAKE_INSTALL_PREFIX="$(INSTALL_DIR)" \
-			  -DCMAKE_BUILD_TYPE=Release \
-			  "$(LOCO_DIR)/$(PKG)" && \
-		$(MAKE) -j$(nproc) && $(MAKE) install
+g1_msgs: g1_description
+g1_mpc: g1_msgs
+g1_mujoco_sim: g1_mpc
 
-
-# Clean only g1_locomotion-related build files
-.PHONY: clean
 clean:
-	@echo " Cleaning g1_locomotion-related build and install files..."
-	@if [ -d "$(BUILD_DIR)" ]; then \
-		for pkg in $(LOCO_PACKAGES); do \
-			rm -rf "$(BUILD_DIR)/$$pkg"; \
-		done; \
-	fi
-	@if [ -d "$(INSTALL_DIR)" ]; then \
-		for pkg in $(LOCO_PACKAGES); do \
-			rm -rf "$(INSTALL_DIR)/share/$$pkg"; \
-		done; \
-	fi
-	@echo "Clean completed."
+	@for pkg in $(PACKAGES); do \
+		rm -rf "$(BUILD_DIR)/$$pkg" "$(INSTALL_DIR)/share/$$pkg"; \
+	done
+	@echo "cleaned"
 
-
-# Force a rebuild of all g1_locomotion packages
-.PHONY: rebuild
 rebuild: clean build
 
-# Source the workspace
-.PHONY: source
-source:
-	@echo "source $(INSTALL_DIR)/setup.bash"
+# Controller checks that need neither a ROS master nor a display.
+test: build
+	@echo "==> MPC / gait / footstep self-test"
+	@$(BUILD_DIR)/g1_mpc/devel/lib/g1_mpc/mpc_selftest
+	@echo "==> PD stand smoke test"
+	@$(SETUP) && python3 $(LOCO_DIR)/g1_mujoco_sim/scripts/pd_stand_demo.py \
+		--headless --duration 3
 
-# Show available commands
-.PHONY: help
+# Fails if the configuration no longer matches the URDF.
+check-config:
+	@$(SETUP) && python3 $(LOCO_DIR)/g1_mujoco_sim/scripts/extract_robot_params.py --check
+
 help:
-	@echo "make all          - Build all g1_locomotion packages"
-	@echo "make build        - Same as 'make all' (builds all g1_locomotion packages)"
-	@echo "make clean        - Remove only g1_locomotion-related build files"
-	@echo "make rebuild      - Clean and rebuild all g1_locomotion packages"
-	@echo "make pkg PKG=<name> - Build a specific package inside g1_locomotion"
-	@echo "make source       - Print command to source the workspace"
-
+	@echo "make build        - build and install every package, in dependency order"
+	@echo "make clean        - remove this repository's build and install output"
+	@echo "make rebuild      - clean, then build"
+	@echo "make test         - run the offline controller checks"
+	@echo "make check-config - verify config/g1_locomotion.yaml matches the URDF"
